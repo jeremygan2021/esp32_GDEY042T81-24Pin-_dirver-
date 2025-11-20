@@ -2,3 +2,4 @@
 用的是物联网的mircopython
 墨水屏型号是GDEY042T81
 epaper4in2.py 是驱动
+不要写测试脚本，因为实在固件上执行的
