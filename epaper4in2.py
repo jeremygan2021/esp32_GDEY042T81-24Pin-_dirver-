@@ -135,7 +135,7 @@ class EPD:
     def wait_until_idle(self):
         while self.busy.value() == BUSY:
             sleep_ms(100)
-            print("Wait till idle")
+            print("等待墨水屏空闲")
 
     def reset(self):
         self.rst(0)
@@ -145,7 +145,7 @@ class EPD:
 
     def update_full(self):
         #update Full
-        print("Do Update")
+        print("执行全屏更新")
         self._command(0x21,b'\x40\x00')
         if self.use_fast_update == False:
             self._command(0x22,b'\xf7')
@@ -154,12 +154,20 @@ class EPD:
             self._command(0x22,b'\xd7')
         self._command(0x20)
         self.wait_until_idle()
-        print("Updated", self.busy.value())
+        print("更新完成", self.busy.value())
 
     # 添加专门的全屏刷新方法，用于清除残影
-    def clear_screen(self):
-        """执行全屏刷新以清除残影"""
-        print("执行全屏刷新以清除残影")
+    def clear_screen(self, double_refresh=True):
+        """执行全屏刷新以清除残影
+        
+        参数:
+            double_refresh: 是否执行两次刷新以彻底清除残影，默认为True
+        """
+        if double_refresh:
+            print("执行双次全屏刷新以彻底清除残影")
+        else:
+            print("执行单次全屏刷新以清除残影")
+            
         # 创建全白缓冲区
         white_buffer = bytearray(self.width * self.height // 8)
         for i in range(len(white_buffer)):
@@ -169,11 +177,19 @@ class EPD:
         self.set_partial(0, 0, self.width, self.height)
         self.write_image(0x24, white_buffer, True, True)
         
-        # 执行全屏刷新
+        # 执行第一次全屏刷新
         self._command(0x21,b'\x40\x00')
         self._command(0x22,b'\xf7')  # 使用完整刷新模式
         self._command(0x20)
         self.wait_until_idle()
+        
+        # 如果启用双次刷新，再执行一次
+        if double_refresh:
+            print("执行第二次全屏刷新")
+            self._command(0x21,b'\x40\x00')
+            self._command(0x22,b'\xf7')  # 使用完整刷新模式
+            self._command(0x20)
+            self.wait_until_idle()
         
         # 重置刷新计数器
         self.refresh_count = 0
@@ -204,8 +220,19 @@ class EPD:
                 self._ndata(value)
 
     # 修改显示方法，添加刷新控制逻辑
-    def display_frame(self, frame_buffer, partial=False, x=0, y=0, w=None, h=None):
-        print("disfr")
+    def display_frame(self, frame_buffer, partial=False, x=0, y=0, w=None, h=None, global_refresh=False):
+        """显示帧缓冲区内容
+        
+        参数:
+            frame_buffer: 要显示的帧缓冲区数据
+            partial: 是否使用局部刷新模式，默认为False
+            x: 局部刷新的起始X坐标，默认为0
+            y: 局部刷新的起始Y坐标，默认为0
+            w: 局部刷新的宽度，默认为全屏宽度
+            h: 局部刷新的高度，默认为全屏高度
+            global_refresh: 是否使用全局刷新模式，默认为False
+        """
+        print("显示帧缓冲区")
         if self.init_done==False:
             self.init()
 
@@ -216,7 +243,12 @@ class EPD:
             h = self.height
             
         # 检查是否需要强制全屏刷新
-        if self.force_full_refresh or self.refresh_count >= self.partial_refresh_limit:
+        need_clear_screen = self.force_full_refresh or self.refresh_count >= self.partial_refresh_limit
+        
+        # 如果使用全局刷新模式，则设置全屏刷新区域
+        if global_refresh:
+            self.set_partial(0, 0, self.width, self.height)
+        elif need_clear_screen:
             self.clear_screen()
             # 设置局部刷新区域
             self.set_partial(x, y, w, h)
@@ -228,8 +260,22 @@ class EPD:
         self.write_image(0x24, frame_buffer, True, True)
 
         # 执行刷新
-        if partial and not self.force_full_refresh and self.refresh_count < self.partial_refresh_limit:
+        if global_refresh:
+            # 全局刷新模式
+            print("执行全局刷新模式")
+            self._command(0x21,b'\x40\x00')
+            self._command(0x22,b'\xf7')  # 使用完整刷新模式
+            self._command(0x20)
+            self.wait_until_idle()
+            self.refresh_count = 0
+            print("全局刷新完成，重置计数器")
+        elif need_clear_screen:
+            # 已经通过clear_screen()执行了刷新，这里不需要再次刷新
+            print("已通过clear_screen完成全屏刷新，跳过重复刷新")
+            self.refresh_count = 0
+        elif partial and not self.force_full_refresh and self.refresh_count < self.partial_refresh_limit:
             # 局部刷新模式
+            print("执行局部刷新模式")
             self._command(0x21,b'\x40\x00')
             self._command(0x1A, b'\x64')  # 快速刷新设置
             self._command(0x22,b'\xd7')  # 局部刷新命令
@@ -239,6 +285,7 @@ class EPD:
             print(f"局部刷新完成，刷新计数: {self.refresh_count}/{self.partial_refresh_limit}")
         else:
             # 全屏刷新模式
+            print("执行全屏刷新模式")
             self.update_full()
             self.refresh_count = 0
             print("全屏刷新完成，重置计数器")

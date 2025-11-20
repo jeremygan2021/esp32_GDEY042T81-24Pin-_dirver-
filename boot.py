@@ -74,46 +74,13 @@ buf[ln+1+50]=15
 
 # 显示第一个图片后立即执行全屏刷新，完全解决残影问题
 print("显示第一个图片")
-e.display_frame(buf, partial=False)  # 使用全屏刷新模式显示第一个图片
+e.display_frame(buf, partial=False, global_refresh=True)  # 使用全屏刷新模式显示第一个图片
 
-# 再次执行全屏刷新，确保彻底清除所有可能的残影
-print("执行全屏刷新以清除残影")
-e.clear_screen()  # 专门的全屏刷新方法，清除残影
 
 sleep_ms(3000)
 
-# # 演示局部刷新功能
-# print("演示局部刷新")
-# fb.fill(white)
-# fb.text("局部刷新测试", 50, 50, black)
-# fb.rect(40, 40, 200, 30, black)
-
-# # 使用局部刷新模式，只更新指定区域
-# e.display_frame(buf, partial=True, x=40, y=40, w=200, h=30)
-
-# sleep_ms(3000)
-
-# # 再进行几次局部刷新，演示刷新计数器的工作
-# for i in range(4):
-#     fb.fill(white)
-#     fb.text(f"局部刷新 #{i+1}", 50, 100, black)
-#     # 使用局部刷新模式
-#     e.display_frame(buf, partial=True, x=40, y=100, w=200, h=30)
-#     sleep_ms(2000)
-
-# # 此时应该会触发自动全屏刷新，清除残影
-# print("应该触发自动全屏刷新")
-# fb.fill(white)
-# fb.text("自动全屏刷新后", 50, 150, black)
-# e.display_frame(buf, partial=True, x=40, y=150, w=200, h=30)
-
-sleep_ms(3000)
-
-# 演示强制全屏刷新
-print("演示强制全屏刷新")
-e.force_refresh()  # 设置强制刷新标志
-fb.fill(white)
-# fb.text("强制全屏刷新", 50, 200, black)
-# e.display_frame(buf)  # 这次会执行全屏刷新，清除所有残影
+# 清空屏幕，显示全白
+print("清空屏幕为白色")
+e.clear_screen(double_refresh=False)
 
 print("演示完成")
