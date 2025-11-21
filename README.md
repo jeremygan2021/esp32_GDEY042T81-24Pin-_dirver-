@@ -49,6 +49,55 @@
   - `machine` - 硬件控制
   - `framebuf` - 帧缓冲区
   - `time` - 时间控制
+  - `network` - WiFi网络连接
+  - `urequests` - HTTP请求（可选）
+
+## WiFi配置
+
+如果需要网络功能，请在`config.py`中添加以下WiFi配置：
+
+```python
+# WiFi配置
+WIFI_SSID = "your_wifi_ssid"  # 替换为你的WiFi名称
+WIFI_PASSWORD = "your_wifi_password"  # 替换为你的WiFi密码
+WIFI_TIMEOUT = 10000  # WiFi连接超时时间(毫秒)
+
+def connect_wifi():
+    import network
+    import time
+    
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    
+    if not wlan.isconnected():
+        print('正在连接WiFi...')
+        wlan.connect(WIFI_SSID, WIFI_PASSWORD)
+        
+        # 等待连接
+        timeout = WIFI_TIMEOUT
+        while not wlan.isconnected() and timeout > 0:
+            time.sleep_ms(100)
+            timeout -= 100
+            
+    if wlan.isconnected():
+        print('WiFi连接成功')
+        print('网络配置:', wlan.ifconfig())
+        return True
+    else:
+        print('WiFi连接失败')
+        return False
+```
+
+使用方法：
+```python
+import config
+
+# 连接WiFi
+if config.connect_wifi():
+    print("网络已就绪，可以进行网络操作")
+else:
+    print("网络连接失败，使用离线模式")
+```
 
 ## 安装与配置
 
@@ -358,7 +407,147 @@ else:
 ### 动画效果
 
 ```python
-# 简单动画示例
+## WiFi模块使用
+
+本项目包含一个WiFi管理模块(`wifi.py`)，提供便捷的WiFi连接和管理功能。
+
+### 基本使用
+
+```python
+import wifi
+
+# 连接到WiFi
+if wifi.wifi_manager.connect():
+    print("WiFi连接成功")
+    print("IP地址:", wifi.wifi_manager.get_ip())
+else:
+    print("WiFi连接失败")
+```
+
+### 高级功能
+
+```python
+import wifi
+
+# 扫描可用网络
+networks = wifi.wifi_manager.scan_networks()
+for net in networks:
+    print(f"SSID: {net[0]}, 信号强度: {net[3]}")
+
+# 获取网络信息
+if wifi.wifi_manager.is_connected():
+    ip_info = wifi.wifi_manager.get_network_info()
+    print(f"IP: {ip_info[0]}")
+    print(f"子网掩码: {ip_info[1]}")
+    print(f"网关: {ip_info[2]}")
+    
+    # 获取信号强度
+    rssi = wifi.wifi_manager.get_signal_strength()
+    print(f"信号强度: {rssi} dBm")
+
+# 断开连接
+wifi.wifi_manager.disconnect()
+```
+
+### WiFi模块API
+
+#### WiFiManager类
+
+- `connect(ssid=None, password=None, timeout=None)`: 连接到WiFi网络
+- `disconnect()`: 断开WiFi连接
+- `is_connected()`: 检查连接状态
+- `get_ip()`: 获取当前IP地址
+- `get_network_info()`: 获取完整网络配置信息
+- `scan_networks()`: 扫描可用WiFi网络
+- `get_signal_strength()`: 获取当前连接的信号强度
+
+## 网络应用示例
+
+### 获取网络时间
+
+```python
+import wifi
+import urequests
+import ujson
+
+# 连接WiFi
+if wifi.wifi_manager.connect():
+    # 获取网络时间
+    try:
+        response = urequests.get("http://worldtimeapi.org/api/ip")
+        if response.status_code == 200:
+            data = ujson.loads(response.text)
+            datetime = data["datetime"]
+            print(f"当前时间: {datetime}")
+        response.close()
+    except Exception as e:
+        print(f"获取时间失败: {e}")
+```
+
+### HTTP请求示例
+
+```python
+import wifi
+import urequests
+
+# 连接WiFi
+if wifi.wifi_manager.connect():
+    # 发送GET请求
+    try:
+        response = urequests.get("https://api.example.com/data")
+        if response.status_code == 200:
+            data = response.text
+            print(f"响应数据: {data}")
+        response.close()
+    except Exception as e:
+        print(f"请求失败: {e}")
+```
+
+## WiFi显示应用
+
+本项目包含一个WiFi显示应用(`wifi_display.py`)，可以在墨水屏上显示WiFi网络信息。
+
+### 功能特点
+
+- 根据config.py中的WiFi配置状态显示不同内容
+- 如果WiFi未配置，显示所有可用网络列表及其信号强度
+- 如果WiFi已配置且连接成功，显示已连接WiFi的详细信息
+- 支持密码部分隐藏显示（只显示前两位和后两位，中间用****代替）
+- 自动按信号强度排序网络列表
+
+### 使用方法
+
+1. 在`boot.py`中设置`RUN_MODE = 1`以启动WiFi显示应用
+2. 上传代码到ESP32并重启设备
+
+### 显示内容
+
+#### WiFi未配置时
+- 显示"WiFi未配置"提示
+- 显示配置说明和示例代码
+
+#### WiFi已配置但连接失败时
+- 显示所有可用的WiFi网络
+- 按信号强度从强到弱排序
+- 显示每个网络的名称和信号强度
+
+#### WiFi连接成功时
+- 显示已连接的WiFi名称
+- 显示密码（部分隐藏）
+- 显示信号强度和IP地址
+- 显示连接状态
+
+### 代码示例
+
+```python
+import wifi_display
+
+# 创建并运行WiFi显示应用
+app = wifi_display.WiFiDisplayApp()
+app.run()
+```
+
+## 简单动画示例
 for i in range(10):
     fb.fill(1)  # 清屏
     x = 50 + i * 10

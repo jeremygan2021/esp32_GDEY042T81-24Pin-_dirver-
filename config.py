@@ -23,3 +23,12 @@ spi = SPI(2, baudrate=2000000, polarity=0, phase=0, sck=sck, miso=miso, mosi=mos
 epd_power = Pin(2, Pin.OUT)
 epd_power.on()
 sleep_ms(10)
+
+# WiFi配置
+# WIFI_SSID = "your_wifi_ssid"  # 替换为你的WiFi名称
+# WIFI_PASSWORD = "your_wifi_password"  # 替换为你的WiFi密码
+# WIFI_TIMEOUT = 10000  # WiFi连接超时时间(毫秒)
+
+WIFI_SSID = "Tangleup-AI"  # 替换为你的WiFi名称
+WIFI_PASSWORD = "djt12345678"  # 替换为你的WiFi密码
+WIFI_TIMEOUT = 10000  # WiFi连接超时时间(毫秒)
