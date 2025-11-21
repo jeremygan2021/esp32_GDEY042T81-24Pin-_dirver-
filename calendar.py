@@ -1,6 +1,7 @@
 """
 墨水屏日历应用 - 适配GDEY042T81 (400x300)
-每6小时全局刷新一次，显示美观的日历界面
+只在时段变化时全局刷新，显示美观的日历界面
+时段分为：Morning(5:00-12:00), Noon(12:00-14:00), Afternoon(14:00-17:00), Evening(17:00-20:00), Night(20:00-5:00)
 """
 
 import epaper4in2
@@ -50,13 +51,23 @@ WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
 MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", 
           "jul", "aug", "sep", "oct", "nov", "dec"]
 
+# 时段图标 (8x8像素)
+# Morning/Afternoon - 太阳图标
+MORNING_ICON = bytearray(b'\x08\x1C\x22\x41\x41\x22\x1C\x08')
+AFTERNOON_ICON = bytearray(b'\x08\x1C\x22\x41\x41\x22\x1C\x08')
+
+# Noon - 正午太阳（更亮）
+NOON_ICON = bytearray(b'\x3C\x42\x42\x42\x42\x42\x42\x3C')
+
+# Evening/Night - 月亮图标
+EVENING_ICON = bytearray(b'\x08\x1C\x2A\x55\x55\x2A\x1C\x08')
+NIGHT_ICON = bytearray(b'\x08\x1C\x2A\x55\x55\x2A\x1C\x08')
+
 class CalendarApp:
     def __init__(self):
-        # 刷新计数器
-        self.refresh_count = 0
+        # 刷新相关变量
         self.last_full_refresh = 0  # 使用0表示未进行过全屏刷新
-        self.last_refresh_hour = -1  # 上次全屏刷新的小时数，-1表示未刷新过
-        self.full_refresh_interval = 6 * 60 * 60 * 1000  # 6小时（毫秒）
+        self.last_period = ""  # 上次显示的时段
         
         # 时间相关变量
         self.current_year = 0
@@ -66,8 +77,33 @@ class CalendarApp:
         self.current_minute = 0
         self.current_weekday = 0
         
+    def get_time_period_icon(self, hour):
+        """根据小时数返回时段对应的图标"""
+        if 5 <= hour < 12:
+            return MORNING_ICON
+        elif 12 <= hour < 14:
+            return NOON_ICON
+        elif 14 <= hour < 17:
+            return AFTERNOON_ICON
+        elif 17 <= hour < 20:
+            return EVENING_ICON
+        else:
+            return NIGHT_ICON
+            
+    def get_time_period(self, hour):
+        """根据小时数返回时段"""
+        if 5 <= hour < 12:
+            return "Morning"
+        elif 12 <= hour < 14:
+            return "Noon"
+        elif 14 <= hour < 17:
+            return "Afternoon"
+        elif 17 <= hour < 20:
+            return "Evening"
+        else:
+            return "Night"
+            
     def update_time(self):
-        """更新当前时间"""
         t = localtime()
         self.current_year = t[0]
         self.current_month = t[1]
@@ -172,10 +208,10 @@ class CalendarApp:
                 
                 # 如果是今天，高亮显示
                 if day == self.current_day:
-                    # 绘制背景框
-                    fb.rect(col * cell_width + 2, grid_start_y + row * cell_height + 2, 
-                           cell_width - 4, cell_height - 4, BLACK)
-                    # 反色显示
+                    # 先填充黑色背景
+                    fb.fill_rect(col * cell_width + 2, grid_start_y + row * cell_height + 2, 
+                                cell_width - 4, cell_height - 4, BLACK)
+                    # 然后用白色文字显示日期
                     fb.text(str(day), x, y, WHITE)
                 else:
                     fb.text(str(day), x, y, BLACK)
@@ -187,17 +223,40 @@ class CalendarApp:
             if day > days_in_month:
                 break
                 
+    def draw_icon(self, icon_data, x, y, size=8):
+        """绘制8x8像素的图标"""
+        # 创建一个小的帧缓冲区用于图标
+        icon_buf = bytearray(size * size // 8)
+        icon_fb = framebuf.FrameBuffer(icon_buf, size, size, framebuf.MONO_HMSB)
+        
+        # 将图标数据复制到缓冲区
+        for i in range(len(icon_data)):
+            icon_buf[i] = icon_data[i]
+            
+        # 将图标绘制到主帧缓冲区
+        fb.blit(icon_fb, x, y)
+        
     def draw_footer(self):
         """绘制底部时间信息"""
         # 绘制分割线
         fb.hline(0, HEIGHT - 50, WIDTH, BLACK)
         
-        # 格式化时间
-        time_str = f"{self.current_hour:02d}:{self.current_minute:02d}"
-        date_str = f"Year: {self.current_year} Month: {self.current_month} Day: {self.current_day} &{WEEKDAYS[self.current_weekday]}"
+        # 获取当前时段和图标
+        current_period = self.get_time_period(self.current_hour)
+        period_icon = self.get_time_period_icon(self.current_hour)
         
-        # 显示时间
-        fb.text(time_str, WIDTH // 2 - len(time_str) * 6 // 2, HEIGHT - 40, BLACK)
+        # 格式化日期
+        date_str = f"Year: {self.current_year} Month: {self.current_month} Day: {self.current_day} {WEEKDAYS[self.current_weekday]}"
+        
+        # 计算时段文本位置（考虑图标）
+        period_x = WIDTH // 2 - len(current_period) * 6 // 2 + 10  # 向右偏移10像素为图标留空间
+        icon_x = period_x - 15  # 图标在文本左侧
+        
+        # 绘制图标
+        self.draw_icon(period_icon, icon_x, HEIGHT - 42)
+        
+        # 显示时段
+        fb.text(current_period, period_x, HEIGHT - 40, BLACK)
         
         # 显示日期
         fb.text(date_str, WIDTH // 2 - len(date_str) * 6 // 2, HEIGHT - 25, BLACK)
@@ -205,52 +264,41 @@ class CalendarApp:
         # 绘制装饰性元素
         fb.rect(10, HEIGHT - 45, WIDTH - 20, 35, BLACK)
         
-    def need_full_refresh(self):
-        """检查是否需要全屏刷新"""
-        # 如果是第一次运行，需要全屏刷新
-        if self.last_full_refresh == 0:
+    def need_refresh(self):
+        """检查是否需要刷新（只在时段变化时刷新）"""
+        # 获取当前时段
+        current_period = self.get_time_period(self.current_hour)
+        
+        # 如果时段发生变化，需要刷新
+        if current_period != self.last_period:
+            self.last_period = current_period
             return True
             
-        # 获取当前时间
-        current_time = localtime()
-        current_hour = current_time[3]
-        
-        # 简单判断：如果当前小时是6的倍数（6:00, 12:00, 18:00, 0:00），则执行全屏刷新
-        # 这样可以确保每6小时执行一次全屏刷新
-        if current_hour % 6 == 0 and current_time[4] < 5:  # 在每6小时的开始5分钟内执行
-            # 检查是否已经在这个时间段执行过刷新
-            if not hasattr(self, 'last_refresh_hour') or self.last_refresh_hour != current_hour:
-                self.last_refresh_hour = current_hour
-                return True
-        
         return False
         
     def display(self):
         """显示日历"""
         self.update_time()
-        self.draw_calendar()
         
-        # 检查是否需要全屏刷新
-        if self.need_full_refresh():
-            print("执行全屏刷新")
+        # 检查是否需要刷新
+        if self.need_refresh():
+            print(f"时段变化，执行全局刷新 - {self.last_period}")
+            self.draw_calendar()
             e.display_frame(buf, global_refresh=True)
-            # 标记已执行全屏刷新
-            self.last_full_refresh = 1  # 非零值表示已执行过刷新
         else:
-            print("执行局部刷新")
-            e.display_frame(buf, partial=True)
+            print(f"时段未变化，不刷新 - {self.last_period}")
             
     def run(self):
         """运行日历应用"""
         print("启动墨水屏日历应用")
         
-        # 初始全屏刷新
+        # 初始显示
         self.display()
         
         # 主循环
         while True:
             try:
-                # 每分钟更新一次显示
+                # 每分钟检查一次是否需要刷新
                 self.display()
                 
                 # 等待一分钟

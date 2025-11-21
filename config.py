@@ -1,0 +1,22 @@
+# SPI引脚配置
+sck = Pin(47)   # SCK pin47
+miso = Pin(46)  # MISO pin46
+mosi = Pin(21)  # SDI/MOSI pin21
+
+# 控制引脚配置
+dc = Pin(40)    # D/C pin40
+cs = Pin(45)    # CS pin45
+rst = Pin(41)   # RES pin41
+busy = Pin(42)  # BUSY pin42
+
+# 屏幕尺寸
+WIDTH = 400
+HEIGHT = 300
+
+# 初始化SPI
+spi = SPI(2, baudrate=2000000, polarity=0, phase=0, sck=sck, miso=miso, mosi=mosi)
+
+# ESPink电源控制
+epd_power = Pin(2, Pin.OUT)
+epd_power.on()
+sleep_ms(10)
