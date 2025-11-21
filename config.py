@@ -1,3 +1,6 @@
+from machine import Pin, SPI
+from time import sleep_ms
+
 # SPI引脚配置
 sck = Pin(47)   # SCK pin47
 miso = Pin(46)  # MISO pin46

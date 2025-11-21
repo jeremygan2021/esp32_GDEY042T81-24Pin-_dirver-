@@ -4,6 +4,12 @@
 
 本项目提供了Good Display GDEY042T81 4.2英寸电子墨水屏的MicroPython驱动程序。该显示屏具有400x300像素的分辨率，支持黑白显示，适用于ESP32等微控制器。驱动程序经过优化，有效解决了墨水屏常见的残影问题，并提供了灵活的刷新控制策略。
 
+项目特点：
+- 统一的引脚配置管理
+- 智能刷新策略，自动防止残影积累
+- 内置日历应用，支持时段变化刷新
+- 模块化设计，易于扩展
+
 ## 硬件规格
 
 - **型号**: GDEY042T81 (24Pin版本)
@@ -52,16 +58,20 @@
 
 ```
 /espdisplay/
+├── config.py        # 统一配置文件（引脚、屏幕尺寸等）
 ├── epaper4in2.py    # 墨水屏驱动程序
 ├── boot.py          # 主程序示例
+├── calendar.py      # 日历应用
 ├── image_dark.py    # 黑底白字图像数据
 └── image_light.py   # 白底黑字图像数据
 ```
 
-### 2. 驱动初始化
+### 2. 统一配置
+
+本项目使用`config.py`文件统一管理所有硬件配置，包括引脚定义和屏幕参数：
 
 ```python
-import epaper4in2
+# config.py 内容示例
 from machine import Pin, SPI
 from time import sleep_ms
 
@@ -76,16 +86,27 @@ cs = Pin(45)    # CS pin45
 rst = Pin(41)   # RES pin41
 busy = Pin(42)  # BUSY pin42
 
+# 屏幕尺寸
+WIDTH = 400
+HEIGHT = 300
+
 # 初始化SPI
 spi = SPI(2, baudrate=2000000, polarity=0, phase=0, sck=sck, miso=miso, mosi=mosi)
 
-# 电源控制
+# ESPink电源控制
 epd_power = Pin(2, Pin.OUT)
 epd_power.on()
 sleep_ms(10)
+```
 
-# 初始化墨水屏
-e = epaper4in2.EPD(spi, cs, dc, rst, busy)
+### 3. 驱动初始化
+
+```python
+import epaper4in2
+import config  # 导入统一配置
+
+# 使用config中的配置初始化墨水屏
+e = epaper4in2.EPD(config.spi, config.cs, config.dc, config.rst, config.busy)
 e.pwr_on()
 e.init()
 ```
@@ -155,15 +176,17 @@ e = epaper4in2.EPD(spi, cs, dc, rst, busy)
 
 ```python
 import epaper4in2
-from machine import Pin, SPI
+import config
 import framebuf
 
-# 初始化代码（如上所示）
+# 初始化墨水屏
+e = epaper4in2.EPD(config.spi, config.cs, config.dc, config.rst, config.busy)
+e.pwr_on()
+e.init()
 
 # 创建帧缓冲区
-w, h = 400, 300
-buf = bytearray(w * h // 8)
-fb = framebuf.FrameBuffer(buf, w, h, framebuf.MONO_HMSB)
+buf = bytearray(config.WIDTH * config.HEIGHT // 8)
+fb = framebuf.FrameBuffer(buf, config.WIDTH, config.HEIGHT, framebuf.MONO_HMSB)
 
 # 填充白色背景
 fb.fill(1)  # 1表示白色
@@ -174,6 +197,24 @@ fb.text("Hello World", 50, 50, 0)  # 0表示黑色
 # 显示内容
 e.display_frame(buf, partial=False)  # 使用全屏刷新
 ```
+
+### 日历应用
+
+本项目包含一个完整的日历应用，支持时段变化自动刷新：
+
+```python
+import calendar
+
+# 直接运行日历应用
+calendar_app = calendar.CalendarApp()
+calendar_app.run()
+```
+
+日历应用特点：
+- 自动检测时段变化（Morning/Noon/Afternoon/Evening/Night）
+- 只在时段变化时执行全屏刷新，节省功耗
+- 美观的日历界面，显示当前日期和时段
+- 内置时段图标，直观显示当前时段
 
 ### 局部刷新示例
 
@@ -329,6 +370,58 @@ for i in range(10):
 e.clear_screen()
 ```
 
+### 自定义应用开发
+
+基于本项目开发自定义应用时，建议遵循以下模式：
+
+```python
+import epaper4in2
+import config
+import framebuf
+from time import sleep_ms
+
+class CustomApp:
+    def __init__(self):
+        # 初始化墨水屏
+        self.e = epaper4in2.EPD(config.spi, config.cs, config.dc, config.rst, config.busy)
+        self.e.pwr_on()
+        self.e.init()
+        
+        # 创建帧缓冲区
+        self.buf = bytearray(config.WIDTH * config.HEIGHT // 8)
+        self.fb = framebuf.FrameBuffer(self.buf, config.WIDTH, config.HEIGHT, framebuf.MONO_HMSB)
+        
+        # 颜色定义
+        self.BLACK = 0
+        self.WHITE = 1
+        
+        # 应用状态
+        self.last_refresh_time = 0
+        
+    def need_refresh(self):
+        """判断是否需要刷新屏幕"""
+        # 实现自定义刷新逻辑
+        return True
+        
+    def draw_screen(self):
+        """绘制屏幕内容"""
+        # 实现自定义绘制逻辑
+        self.fb.fill(self.WHITE)
+        self.fb.text("Custom App", 50, 50, self.BLACK)
+        
+    def display(self):
+        """显示内容"""
+        if self.need_refresh():
+            self.draw_screen()
+            self.e.display_frame(self.buf, global_refresh=True)
+            
+    def run(self):
+        """运行应用主循环"""
+        while True:
+            self.display()
+            sleep_ms(60000)  # 每分钟检查一次
+```
+
 ### 触摸交互（如果支持）
 
 ```python
@@ -339,16 +432,91 @@ def on_touch(x, y):
     e.display_frame(buf, partial=True, x=x-15, y=y-15, w=30, h=30)
 ```
 
-## 许可证
+## 项目扩展
 
-本项目采用MIT许可证。
+### 添加新的显示内容
+
+1. 创建新的图像文件：
+   ```python
+   # new_image.py
+   new_image_data = bytearray([...])  # 图像数据
+   ```
+
+2. 在应用中使用：
+   ```python
+   from new_image import new_image_data
+   
+   # 创建帧缓冲区并显示
+   img_fb = framebuf.FrameBuffer(new_image_data, width, height, framebuf.MONO_HMSB)
+   fb.blit(img_fb, x, y)
+   ```
+
+### 修改引脚配置
+
+要修改引脚配置，只需编辑`config.py`文件：
+
+```python
+# 修改SPI引脚
+sck = Pin(18)   # 改为GPIO18
+miso = Pin(19)  # 改为GPIO19
+mosi = Pin(23)  # 改为GPIO23
+
+# 修改控制引脚
+dc = Pin(22)    # 改为GPIO22
+cs = Pin(5)     # 改为GPIO5
+rst = Pin(4)    # 改为GPIO4
+busy = Pin(21)  # 改为GPIO21
+```
+
+修改后，所有使用这些引脚的文件都会自动使用新的配置，无需逐个修改。
 
 ## 贡献
 
-欢迎提交问题报告和改进建议。
+欢迎提交问题报告和功能请求！如果您想贡献代码，请遵循以下步骤：
+
+1. Fork 本仓库
+2. 创建您的功能分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交您的更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 打开一个 Pull Request
+
+## 更新日志
+
+### v1.1.0 (最新版本)
+- 添加统一的引脚配置管理（config.py）
+- 实现智能刷新策略，减少残影问题
+- 新增内置日历应用，支持时段变化自动刷新
+- 优化代码结构，提高可维护性
+- 完善文档和使用示例
+
+### v1.0.0
+- 初始版本发布
+- 基本的4.2寸墨水屏驱动功能
+- 支持全屏和局部刷新模式
+
+## 许可证
+
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+
+## 致谢
+
+- 感谢 Good Display 提供的墨水屏技术支持和规格说明
+- 感谢 MicroPython 社区提供的优秀框架和工具
+- 感谢所有为本项目做出贡献的开发者
+
+## 联系方式
+
+如果您有任何问题或建议，可以通过以下方式联系：
+
+- 提交 [Issue](https://github.com/yourusername/espdisplay/issues)
+- 发送邮件至：your.email@example.com
+
+---
+
+**注意**：使用墨水屏时请注意避免频繁刷新，以延长屏幕寿命。建议在长时间使用后定期执行全屏刷新，以防止残影积累。
 
 ## 参考资料
 
-- [Good Display GDEY042T81 规格书](https://www.good-display.com/product/376.html)
-- [MicroPython 官方文档](https://micropython.org/)
-- [ESP32 MicroPython 文档](https://docs.micropython.org/en/latest/esp32/quickref.html)
+- [Good Display GDEY042T81 产品规格书](https://www.good-display.cn/product/386.html)
+- [MicroPython 官方文档](https://docs.micropython.org/)
+- [ESP32 开发指南](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32/)

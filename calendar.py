@@ -5,42 +5,19 @@
 """
 
 import epaper4in2
-from machine import Pin, SPI
+import config
 from time import sleep_ms, localtime, mktime
 import framebuf
 import gc
 
-# SPI引脚配置
-sck = Pin(47)   # SCK pin47
-miso = Pin(46)  # MISO pin46
-mosi = Pin(21)  # SDI/MOSI pin21
-
-# 控制引脚配置
-dc = Pin(40)    # D/C pin40
-cs = Pin(45)    # CS pin45
-rst = Pin(41)   # RES pin41
-busy = Pin(42)  # BUSY pin42
-
-# 屏幕尺寸
-WIDTH = 400
-HEIGHT = 300
-
-# 初始化SPI
-spi = SPI(2, baudrate=2000000, polarity=0, phase=0, sck=sck, miso=miso, mosi=mosi)
-
-# ESPink电源控制
-epd_power = Pin(2, Pin.OUT)
-epd_power.on()
-sleep_ms(10)
-
 # 初始化墨水屏
-e = epaper4in2.EPD(spi, cs, dc, rst, busy)
+e = epaper4in2.EPD(config.spi, config.cs, config.dc, config.rst, config.busy)
 e.pwr_on()
 e.init()
 
 # 创建帧缓冲区
-buf = bytearray(WIDTH * HEIGHT // 8)
-fb = framebuf.FrameBuffer(buf, WIDTH, HEIGHT, framebuf.MONO_HMSB)
+buf = bytearray(config.WIDTH * config.HEIGHT // 8)
+fb = framebuf.FrameBuffer(buf, config.WIDTH, config.HEIGHT, framebuf.MONO_HMSB)
 
 # 颜色定义
 BLACK = 0
@@ -158,21 +135,21 @@ class CalendarApp:
     def draw_header(self):
         """绘制顶部标题区域"""
         # 绘制分割线
-        fb.hline(0, 50, WIDTH, BLACK)
+        fb.hline(0, 50, config.WIDTH, BLACK)
         
         # 绘制年份和月份
         month_year = f"year {self.current_year} {MONTHS[self.current_month-1]}"
-        fb.text(month_year, WIDTH // 2 - len(month_year) * 6 // 2, 20, BLACK)
+        fb.text(month_year, config.WIDTH // 2 - len(month_year) * 6 // 2, 20, BLACK)
         
         # 绘制装饰性元素
-        fb.rect(10, 10, WIDTH - 20, 30, BLACK)
+        fb.rect(10, 10, config.WIDTH - 20, 30, BLACK)
         
     def draw_calendar_grid(self):
         """绘制日历网格"""
         # 网格参数
         grid_start_y = 70
         grid_height = 180
-        cell_width = WIDTH // 7
+        cell_width = config.WIDTH // 7
         cell_height = grid_height // 7
         
         # 绘制星期标题
@@ -185,7 +162,7 @@ class CalendarApp:
         # 水平线
         for i in range(8):
             y = grid_start_y + i * cell_height
-            fb.hline(0, y, WIDTH, BLACK)
+            fb.hline(0, y, config.WIDTH, BLACK)
             
         # 垂直线
         for i in range(8):
@@ -239,7 +216,7 @@ class CalendarApp:
     def draw_footer(self):
         """绘制底部时间信息"""
         # 绘制分割线
-        fb.hline(0, HEIGHT - 50, WIDTH, BLACK)
+        fb.hline(0, config.HEIGHT - 50, config.WIDTH, BLACK)
         
         # 获取当前时段和图标
         current_period = self.get_time_period(self.current_hour)
@@ -249,20 +226,20 @@ class CalendarApp:
         date_str = f"Year: {self.current_year} Month: {self.current_month} Day: {self.current_day} {WEEKDAYS[self.current_weekday]}"
         
         # 计算时段文本位置（考虑图标）
-        period_x = WIDTH // 2 - len(current_period) * 6 // 2 + 10  # 向右偏移10像素为图标留空间
+        period_x = config.WIDTH // 2 - len(current_period) * 6 // 2 + 10  # 向右偏移10像素为图标留空间
         icon_x = period_x - 15  # 图标在文本左侧
         
         # 绘制图标
-        self.draw_icon(period_icon, icon_x, HEIGHT - 42)
+        self.draw_icon(period_icon, icon_x, config.HEIGHT - 42)
         
         # 显示时段
-        fb.text(current_period, period_x, HEIGHT - 40, BLACK)
+        fb.text(current_period, period_x, config.HEIGHT - 40, BLACK)
         
         # 显示日期
-        fb.text(date_str, WIDTH // 2 - len(date_str) * 6 // 2, HEIGHT - 25, BLACK)
+        fb.text(date_str, config.WIDTH // 2 - len(date_str) * 6 // 2, config.HEIGHT - 25, BLACK)
         
         # 绘制装饰性元素
-        fb.rect(10, HEIGHT - 45, WIDTH - 20, 35, BLACK)
+        fb.rect(10, config.HEIGHT - 45, config.WIDTH - 20, 35, BLACK)
         
     def need_refresh(self):
         """检查是否需要刷新（只在时段变化时刷新）"""

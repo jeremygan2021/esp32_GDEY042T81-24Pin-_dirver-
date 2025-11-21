@@ -6,36 +6,16 @@
 """
 
 import epaper4in2
-from machine import Pin, SPI
+import config
 from time import sleep_ms
 
-# SPIV on ESP
-sck = Pin(47)   # SCK pin47
-miso = Pin(46)  # MISO pin46
-mosi = Pin(21)  # SDI/MOSI pin21
-
-# Control pins for GDEY042T81 with C02 adapter board
-dc = Pin(40)    # D/C pin40
-cs = Pin(45)    # CS pin45
-rst = Pin(41)   # RES pin41
-busy = Pin(42)  # BUSY pin42
-
-# Initialize SPI
-spi = SPI(2, baudrate=2000000, polarity=0, phase=0, sck=sck, miso=miso, mosi=mosi)
-
-
-# ESPink power saving
-epd_power = Pin(2, Pin.OUT)
-epd_power.on()
-sleep_ms(10)
-
-e = epaper4in2.EPD(spi, cs, dc, rst, busy)
+e = epaper4in2.EPD(config.spi, config.cs, config.dc, config.rst, config.busy)
 
 e.pwr_on()
 e.init()
 
-w = 400
-h = 300
+w = config.WIDTH
+h = config.HEIGHT
 x = 0
 y = 0
 
