@@ -43,7 +43,18 @@ def run(image_data=None, width=128, height=296):
     
     # 加载并显示图片
     print("显示图片")
-    bufImage = image_data
+    
+    # 确保image_data是bytearray类型
+    if isinstance(image_data, bytes):
+        bufImage = bytearray(image_data)
+    else:
+        bufImage = image_data
+    
+    # 检查图片数据大小是否正确
+    expected_size = width * height // 8
+    if len(bufImage) != expected_size:
+        print(f"警告: 图片数据大小不匹配，预期 {expected_size} 字节，实际 {len(bufImage)} 字节")
+    
     fbImage = framebuf.FrameBuffer(bufImage, width, height, framebuf.MONO_HLSB)
     
     # 将图片放置在屏幕中央

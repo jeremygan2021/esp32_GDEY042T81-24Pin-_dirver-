@@ -8,106 +8,140 @@
 import epaper4in2
 import config
 from time import sleep_ms
+import button_control
 
 # 选择运行模式：0=原始演示，1=WiFi显示，2=日历应用，3=中文字体测试，4=HTTP图像显示，5=网络测试，6=显示BIN文件
 RUN_MODE = 3  # 修改此值以选择不同的应用
 
-if RUN_MODE == 1:
-    # 运行WiFi显示应用
-    print("启动WiFi显示应用")
-    import wifi_display
-    wifi_display.wifi_display_app.run()
-elif RUN_MODE == 2:
-    # 运行日历应用
-    print("启动日历应用")
-    import calendar
-    calendar_app = calendar.CalendarApp()
-    calendar_app.run()
-elif RUN_MODE == 3:
-    # 运行中文字体测试
-    print("启动中文字体测试")
-    import image
-    from image_data import data
-    image.run(data, width=400, height=300)
-elif RUN_MODE == 4:
-    # 运行HTTP图像显示
-    print("启动HTTP图像显示")
-    import http_image_display
-    http_image_display.run()
-elif RUN_MODE == 5:
-    # 运行网络测试
-    print("启动网络诊断测试")
-    import test_network
-    test_network.run()
-elif RUN_MODE == 6:
-    # 显示BIN文件
-    print("启动BIN文件显示")
-    # 读取.bin文件
-    f = open('1_latest.bin', 'rb')
-    bin_data = bytearray(f.read())
-    f.close()
-    print("读取BIN文件，大小: " + str(len(bin_data)) + " 字节")
-    # 使用image模块显示，400x300是屏幕尺寸
-    import image
-    image.run(bin_data, width=400, height=300)
-else:
-    # 运行原始演示
-    print("运行原始演示")
+# 执行当前模式的应用
+def run_current_mode(mode):
+    if mode == 1:
+        # 先运行WiFi显示应用，然后运行日历应用
+        print("启动WiFi显示应用")
+        import wifi_display
+        wifi_display.wifi_display_app.run()
+        
+        print("启动日历应用")
+        import calendar
+        calendar_app = calendar.CalendarApp()
+        calendar_app.run()
+    elif mode == 3:
+        # 运行中文字体测试
+        print("启动中文字体测试")
+        import image
+        from image_data import data
+        image.run(data, width=400, height=300)
+    elif mode == 4:
+        # 运行HTTP图像显示
+        print("启动HTTP图像显示")
+        import http_image_display
+        http_image_display.run()
+    elif mode == 5:
+        # 运行网络测试
+        print("启动网络诊断测试")
+        import test_network
+        test_network.run()
+    elif mode == 6:
+        # 显示BIN文件
+        print("启动BIN文件显示")
+        # 读取.bin文件
+        f = open('1_latest.bin', 'rb')
+        bin_data = bytearray(f.read())
+        f.close()
+        print("读取BIN文件，大小: " + str(len(bin_data)) + " 字节")
+        # 使用image模块显示，400x300是屏幕尺寸
+        import image
+        image.run(bin_data, width=400, height=300)
+    else:
+        # 运行原始演示
+        print("运行原始演示")
+        
+        e = epaper4in2.EPD(config.spi, config.cs, config.dc, config.rst, config.busy)
+        
+        e.pwr_on()
+        e.init()
+        
+        w = config.WIDTH
+        h = config.HEIGHT
+        x = 0
+        y = 0
+        
+        # --------------------
+        
+        # use a frame buffer
+        # 400 * 300 / 8 = 15000
+        import framebuf
+        buf = bytearray(w * h // 8)
+        fb = framebuf.FrameBuffer(buf, w, h, framebuf.MONO_HMSB)
+        black = 0
+        white = 1
+        fb.fill(white)
+        
+        # --------------------
+        
+        # write hello world with black bg and white text
+        from image_dark import hello_world_dark
+        from image_light import hello_world_light
+        print('Image dark')
+        bufImage = hello_world_dark
+        fbImage = framebuf.FrameBuffer(bufImage, 128, 296, framebuf.MONO_HLSB)
+        fb.blit(fbImage, 140, 2)
+        bufImage = hello_world_light
+        fbImage = framebuf.FrameBuffer(bufImage, 128, 296, framebuf.MONO_HLSB)
+        fb.blit(fbImage, 288, 2)
+        fb.text("Hola heja",10,10,black)
+        ln = 50*100
+        buf[ln+0]=255
+        buf[ln+1]=0
+        buf[ln+2]=255
+        buf[ln+3]=0
+        buf[ln+4]=0
+        buf[ln+5]=0
+        buf[ln+1+50]=15
+        
+        # 显示第一个图片后立即执行全屏刷新，完全解决残影问题
+        print("显示第一个图片")
+        e.display_frame(buf, partial=False, global_refresh=True)  # 使用全屏刷新模式显示第一个图片
+        
+        
+        sleep_ms(3000)
+        
+        # 清空屏幕，显示全白
+        print("清空屏幕为白色")
+        e.clear_screen(double_refresh=False)
+        
+        print("演示完成")
+
+# 主程序入口
+if __name__ == "__main__":
+    current_mode = RUN_MODE
     
-    e = epaper4in2.EPD(config.spi, config.cs, config.dc, config.rst, config.busy)
+    # 模式名称列表
+    mode_names = [
+        "原始演示",
+        "WiFi显示应用",
+        "日历应用",
+        "中文字体测试",
+        "HTTP图像显示",
+        "网络测试",
+        "显示BIN文件"
+    ]
     
-    e.pwr_on()
-    e.init()
-    
-    w = config.WIDTH
-    h = config.HEIGHT
-    x = 0
-    y = 0
-    
-    # --------------------
-    
-    # use a frame buffer
-    # 400 * 300 / 8 = 15000
-    import framebuf
-    buf = bytearray(w * h // 8)
-    fb = framebuf.FrameBuffer(buf, w, h, framebuf.MONO_HMSB)
-    black = 0
-    white = 1
-    fb.fill(white)
-    
-    # --------------------
-    
-    # write hello world with black bg and white text
-    from image_dark import hello_world_dark
-    from image_light import hello_world_light
-    print('Image dark')
-    bufImage = hello_world_dark
-    fbImage = framebuf.FrameBuffer(bufImage, 128, 296, framebuf.MONO_HLSB)
-    fb.blit(fbImage, 140, 2)
-    bufImage = hello_world_light
-    fbImage = framebuf.FrameBuffer(bufImage, 128, 296, framebuf.MONO_HLSB)
-    fb.blit(fbImage, 288, 2)
-    fb.text("Hola heja",10,10,black)
-    ln = 50*100
-    buf[ln+0]=255
-    buf[ln+1]=0
-    buf[ln+2]=255
-    buf[ln+3]=0
-    buf[ln+4]=0
-    buf[ln+5]=0
-    buf[ln+1+50]=15
-    
-    # 显示第一个图片后立即执行全屏刷新，完全解决残影问题
-    print("显示第一个图片")
-    e.display_frame(buf, partial=False, global_refresh=True)  # 使用全屏刷新模式显示第一个图片
-    
-    
-    sleep_ms(3000)
-    
-    # 清空屏幕，显示全白
-    print("清空屏幕为白色")
-    e.clear_screen(double_refresh=False)
-    
-    print("演示完成")
+    # 持续监听按钮事件
+    while True:
+        # 打印当前模式
+        print(f"\n当前模式: {current_mode} - {mode_names[current_mode]}")
+        print("点击按钮切换到下一个程序，长按3秒重启")
+        
+        # 调用按钮控制模块处理按钮事件
+        new_mode = button_control.handle_buttons(current_mode)
+        
+        # 如果模式发生变化，切换程序
+        if new_mode != current_mode:
+            current_mode = new_mode
+            print(f"切换到模式: {current_mode} - {mode_names[current_mode]}")
+        
+        # 执行当前模式
+        run_current_mode(current_mode)
 
 

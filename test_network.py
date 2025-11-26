@@ -1,38 +1,10 @@
-"""
-网络连接测试程序
+"""网络连接测试程序
 用于诊断ESP32的网络连接问题
 """
 import socket
-import network
 import config
 from time import sleep_ms
-
-def connect_wifi():
-    """连接WiFi"""
-    print("正在连接WiFi...")
-    wlan = network.WLAN(network.STA_IF)
-    wlan.active(True)
-    
-    if not wlan.isconnected():
-        print(f"连接到 {config.WIFI_SSID}")
-        wlan.connect(config.WIFI_SSID, config.WIFI_PASSWORD)
-        
-        timeout = config.WIFI_TIMEOUT // 100
-        while not wlan.isconnected() and timeout > 0:
-            sleep_ms(100)
-            timeout -= 1
-            
-        if not wlan.isconnected():
-            print("WiFi连接失败")
-            return False
-    
-    print("WiFi已连接")
-    ifconfig = wlan.ifconfig()
-    print(f"IP地址: {ifconfig[0]}")
-    print(f"子网掩码: {ifconfig[1]}")
-    print(f"网关: {ifconfig[2]}")
-    print(f"DNS: {ifconfig[3]}")
-    return True
+import wifi
 
 def test_dns():
     """测试DNS解析"""
@@ -55,8 +27,7 @@ def test_ping():
     print("\n=== 测试网络连通性 ===")
     
     # 测试网关
-    wlan = network.WLAN(network.STA_IF)
-    gateway = wlan.ifconfig()[2]
+    gateway = wifi.wifi_manager.get_network_info()[2]
     print(f"网关地址: {gateway}")
     
     # 测试服务器连接
@@ -103,7 +74,7 @@ def run():
     """运行所有测试"""
     print("=== ESP32 网络诊断工具 ===\n")
     
-    if not connect_wifi():
+    if not wifi.wifi_manager.connect():
         print("WiFi连接失败，无法继续测试")
         return
     

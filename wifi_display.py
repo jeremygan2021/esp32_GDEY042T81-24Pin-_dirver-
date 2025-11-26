@@ -417,11 +417,6 @@ class WiFiDisplayApp:
             # 使用全屏刷新显示内容
             self.e.display_frame(self.buf, global_refresh=True)
             
-            # 关闭WiFi以节省功耗
-            try:
-                wifi.wifi_manager.disconnect()
-            except Exception as e:
-                print(f"断开WiFi连接时出错: {e}")
             print("WiFi display app completed")
         except Exception as e:
             print(f"WiFi显示应用运行时出错: {e}")

@@ -331,13 +331,6 @@ class CalendarApp:
         """运行日历应用"""
         print("启动墨水屏日历应用")
         
-        # 尝试连接WiFi
-        print("尝试连接WiFi...")
-        if wifi.wifi_manager.connect():
-            print("WiFi连接成功")
-        else:
-            print("WiFi连接失败，将以离线模式运行")
-        
         # 初始显示
         self.display()
         

@@ -1,36 +1,11 @@
-"""
-HTTP图像显示程序
+"""HTTP图像显示程序
 从后端服务器获取二进制图像数据并显示在墨水屏上
 """
 import socket
 import config
 from time import sleep_ms
-import network
 import image
-
-def connect_wifi():
-    """连接WiFi"""
-    print("正在连接WiFi...")
-    wlan = network.WLAN(network.STA_IF)
-    wlan.active(True)
-    
-    if not wlan.isconnected():
-        print("连接到 " + config.WIFI_SSID)
-        wlan.connect(config.WIFI_SSID, config.WIFI_PASSWORD)
-        
-        # 等待连接
-        timeout = config.WIFI_TIMEOUT // 100
-        while not wlan.isconnected() and timeout > 0:
-            sleep_ms(100)
-            timeout -= 1
-            
-        if not wlan.isconnected():
-            print("WiFi连接失败")
-            return False
-    
-    print("WiFi已连接")
-    print("IP地址: " + wlan.ifconfig()[0])
-    return True
+import wifi
 
 def http_get(host, port, path, headers=None):
     """使用socket实现HTTP GET请求"""
@@ -105,9 +80,10 @@ def fetch_image_from_server():
         'X-API-Key': config.API_KEY
     }
     
+    # 使用错误信息中显示的服务器地址
     status_code, body = http_get(
-        config.SERVER_IP,
-        int(config.SERVER_PORT),
+        "luna.quant-speed.com",
+        80,
         path,
         headers
     )
@@ -124,7 +100,7 @@ def run():
     print("启动HTTP图像显示程序")
     
     # 连接WiFi
-    if not connect_wifi():
+    if not wifi.wifi_manager.connect():
         print("无法连接WiFi，程序退出")
         return
     

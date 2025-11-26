@@ -12,6 +12,10 @@ cs = Pin(45)    # CS pin45
 rst = Pin(41)   # RES pin41
 busy = Pin(42)  # BUSY pin42
 
+# 按钮引脚配置
+btn1 = Pin(46, Pin.IN, Pin.PULL_UP)  # 按钮1连接到引脚46
+btn2 = Pin(20, Pin.IN, Pin.PULL_UP)  # 按钮2连接到引脚20
+
 # 屏幕尺寸
 WIDTH = 400
 HEIGHT = 300
