@@ -9,6 +9,7 @@ import config
 from time import sleep_ms, localtime, mktime
 import framebuf
 import gc
+import wifi
 
 # 初始化墨水屏
 e = epaper4in2.EPD(config.spi, config.cs, config.dc, config.rst, config.busy)
@@ -40,6 +41,11 @@ NOON_ICON = bytearray(b'\x3C\x42\x42\x42\x42\x42\x42\x3C')
 EVENING_ICON = bytearray(b'\x08\x1C\x2A\x55\x55\x2A\x1C\x08')
 NIGHT_ICON = bytearray(b'\x08\x1C\x2A\x55\x55\x2A\x1C\x08')
 
+# WiFi图标 (8x8像素)
+# WiFi图标（8×8 像素，文字描述：底部一条横线，中间三竖，顶部一横，呈“Wi-Fi”扇形）
+WIFI_ICON = bytearray([0x00, 0x0E, 0x11, 0x11, 0x11, 0x0A, 0x04, 0x00])
+WIFI_NO_SIGNAL_ICON = bytearray(b'\x00\x0E\x11\x11\x11\x11\x0E\x00')
+
 class CalendarApp:
     def __init__(self):
         # 刷新相关变量
@@ -53,6 +59,10 @@ class CalendarApp:
         self.current_hour = 0
         self.current_minute = 0
         self.current_weekday = 0
+        
+        # WiFi相关变量
+        self.wifi_connected = False
+        self.wifi_signal_strength = None
         
     def get_time_period_icon(self, hour):
         """根据小时数返回时段对应的图标"""
@@ -88,6 +98,19 @@ class CalendarApp:
         self.current_weekday = t[6]  # 0=星期日, 1=星期一, ...
         self.current_hour = t[3]
         self.current_minute = t[4]
+        
+    def update_wifi_status(self):
+        """更新WiFi连接状态和信号强度"""
+        try:
+            self.wifi_connected = wifi.wifi_manager.is_connected()
+            if self.wifi_connected:
+                self.wifi_signal_strength = wifi.wifi_manager.get_signal_strength()
+            else:
+                self.wifi_signal_strength = None
+        except Exception as e:
+            print(f"获取WiFi状态失败: {e}")
+            self.wifi_connected = False
+            self.wifi_signal_strength = None
         
     def get_month_days(self, year, month):
         """获取指定月份的天数"""
@@ -137,7 +160,45 @@ class CalendarApp:
         # 绘制分割线
         fb.hline(0, 50, config.WIDTH, BLACK)
         
-        # 绘制年份和月份
+        # 绘制WiFi状态（左上角）
+        if self.wifi_connected:
+            # 绘制WiFi图标
+            self.draw_icon(WIFI_ICON, 10, 15)
+            
+            # 绘制信号强度条
+            if self.wifi_signal_strength is not None:
+                # 将信号强度转换为0-4的等级
+                if self.wifi_signal_strength > -50:
+                    signal_bars = 4  # 信号极好
+                elif self.wifi_signal_strength > -60:
+                    signal_bars = 3  # 信号良好
+                elif self.wifi_signal_strength > -70:
+                    signal_bars = 2  # 信号一般
+                elif self.wifi_signal_strength > -80:
+                    signal_bars = 1  # 信号较弱
+                else:
+                    signal_bars = 0  # 信号极弱或无信号
+                
+                # 绘制信号强度条
+                bar_width = 2
+                bar_height_step = 2
+                max_height = 8
+                
+                for i in range(4):
+                    height = (i + 1) * bar_height_step
+                    if height > max_height:
+                        height = max_height
+                    
+                    # 如果当前信号强度等级大于等于当前条，则填充黑色
+                    if i < signal_bars:
+                        fb.fill_rect(22 + i * (bar_width + 1), 24 - height, bar_width, height, BLACK)
+                    else:
+                        fb.rect(22 + i * (bar_width + 1), 24 - height, bar_width, height, BLACK)
+        else:
+            # 绘制无WiFi连接图标
+            self.draw_icon(WIFI_NO_SIGNAL_ICON, 10, 15)
+        
+        # 绘制年份和月份（居中）
         month_year = f"year {self.current_year} {MONTHS[self.current_month-1]}"
         fb.text(month_year, config.WIDTH // 2 - len(month_year) * 6 // 2, 20, BLACK)
         
@@ -256,6 +317,7 @@ class CalendarApp:
     def display(self):
         """显示日历"""
         self.update_time()
+        self.update_wifi_status()
         
         # 检查是否需要刷新
         if self.need_refresh():
@@ -268,6 +330,13 @@ class CalendarApp:
     def run(self):
         """运行日历应用"""
         print("启动墨水屏日历应用")
+        
+        # 尝试连接WiFi
+        print("尝试连接WiFi...")
+        if wifi.wifi_manager.connect():
+            print("WiFi连接成功")
+        else:
+            print("WiFi连接失败，将以离线模式运行")
         
         # 初始显示
         self.display()

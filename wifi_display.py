@@ -357,40 +357,78 @@ class WiFiDisplayApp:
         """Run WiFi display app"""
         print("WiFi display app started")
         
-        # 检查WiFi是否已配置
-        if config.WIFI_SSID == "your_wifi_ssid":
-            # WiFi未配置，扫描并显示所有可用网络
-            print("WiFi not configured, scanning available networks")
-            networks = wifi.wifi_manager.scan_networks()
-            # 按信号强度排序
-            networks.sort(key=lambda x: x[3], reverse=True)
-            self.clear_screen()
-            self.draw_wifi_list(networks)
-            # 使用全屏刷新
+        try:
+            # 检查WiFi是否已配置
+            if config.WIFI_SSID == "your_wifi_ssid":
+                # WiFi未配置，扫描并显示所有可用网络
+                print("WiFi not configured, scanning available networks")
+                try:
+                    networks = wifi.wifi_manager.scan_networks()
+                    # 按信号强度排序
+                    networks.sort(key=lambda x: x[3], reverse=True)
+                    self.clear_screen()
+                    self.draw_wifi_list(networks)
+                    # 使用全屏刷新
+                    self.e.display_frame(self.buf, global_refresh=True)
+                except Exception as e:
+                    print(f"扫描网络时出错: {e}")
+                    self.clear_screen()
+                    self.draw_text("WiFi扫描失败", self.margin, 50)
+                    self.draw_text(f"错误: {str(e)}", self.margin, 80)
+                    self.e.display_frame(self.buf, global_refresh=True)
+                return
+                
+            # 尝试连接WiFi
+            print("Trying to connect to WiFi")
+            try:
+                if wifi.wifi_manager.connect():
+                    print("WiFi connected successfully")
+                    # 显示WiFi连接成功界面
+                    self.draw_wifi_success()
+                else:
+                    print("WiFi connection failed, showing available networks")
+                    # 连接失败，显示所有可用网络
+                    try:
+                        networks = wifi.wifi_manager.scan_networks()
+                        # 按信号强度排序
+                        networks.sort(key=lambda x: x[3], reverse=True)
+                        self.clear_screen()
+                        self.draw_wifi_list(networks)
+                    except Exception as e:
+                        print(f"连接失败后扫描网络时出错: {e}")
+                        self.clear_screen()
+                        self.draw_text("WiFi连接失败", self.margin, 50)
+                        self.draw_text("网络扫描也失败", self.margin, 80)
+                        self.e.display_frame(self.buf, global_refresh=True)
+                        return
+            except Exception as e:
+                print(f"WiFi连接过程中出错: {e}")
+                self.clear_screen()
+                self.draw_text("WiFi连接出错", self.margin, 50)
+                self.draw_text(f"错误: {str(e)}", self.margin, 80)
+                # 尝试显示可用网络
+                try:
+                    networks = wifi.wifi_manager.scan_networks()
+                    networks.sort(key=lambda x: x[3], reverse=True)
+                    self.draw_wifi_list(networks)
+                except:
+                    self.draw_text("无法获取网络列表", self.margin, 110)
+                
+            # 使用全屏刷新显示内容
             self.e.display_frame(self.buf, global_refresh=True)
-            return
             
-        # 尝试连接WiFi
-        print("Trying to connect to WiFi")
-        if wifi.wifi_manager.connect():
-            print("WiFi connected successfully")
-            # 显示WiFi连接成功界面
-            self.draw_wifi_success()
-        else:
-            print("WiFi connection failed, showing available networks")
-            # 连接失败，显示所有可用网络
-            networks = wifi.wifi_manager.scan_networks()
-            # 按信号强度排序
-            networks.sort(key=lambda x: x[3], reverse=True)
+            # 关闭WiFi以节省功耗
+            try:
+                wifi.wifi_manager.disconnect()
+            except Exception as e:
+                print(f"断开WiFi连接时出错: {e}")
+            print("WiFi display app completed")
+        except Exception as e:
+            print(f"WiFi显示应用运行时出错: {e}")
             self.clear_screen()
-            self.draw_wifi_list(networks)
-            
-        # 使用全屏刷新显示内容
-        self.e.display_frame(self.buf, global_refresh=True)
-        
-        # 关闭WiFi以节省功耗
-        wifi.wifi_manager.disconnect()
-        print("WiFi display app completed")
+            self.draw_text("应用运行出错", self.margin, 50)
+            self.draw_text(f"错误: {str(e)}", self.margin, 80)
+            self.e.display_frame(self.buf, global_refresh=True)
 
 # 创建全局应用实例
 

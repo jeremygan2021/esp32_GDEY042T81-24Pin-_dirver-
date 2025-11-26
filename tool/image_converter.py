@@ -109,8 +109,8 @@ def convert_image_to_epaper(input_path, output_path, width=400, height=300, inve
             
             # 将字节数组格式化为十六进制字符串
             for i, byte in enumerate(byte_array):
-                if i % 16 == 0:
-                    f.write("\\n")
+                if i > 0 and i % 16 == 0:
+                    f.write("'\n    b'")
                 f.write(f"\\x{byte:02X}")
             
             f.write("')\n")
@@ -210,8 +210,8 @@ def create_text_image(text, output_path, width=400, height=300, font_size=24, in
             
             # 将字节数组格式化为十六进制字符串
             for i, byte in enumerate(byte_array):
-                if i % 16 == 0:
-                    f.write("\\n")
+                if i > 0 and i % 16 == 0:
+                    f.write("'\n    b'")
                 f.write(f"\\x{byte:02X}")
             
             f.write("')\n")

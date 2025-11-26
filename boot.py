@@ -9,8 +9,8 @@ import epaper4in2
 import config
 from time import sleep_ms
 
-# 选择运行模式：0=原始演示，1=WiFi显示，2=日历应用
-RUN_MODE = 1  # 修改此值以选择不同的应用
+# 选择运行模式：0=原始演示，1=WiFi显示，2=日历应用，3=中文字体测试
+RUN_MODE = 3  # 修改此值以选择不同的应用
 
 if RUN_MODE == 1:
     # 运行WiFi显示应用
@@ -23,6 +23,12 @@ elif RUN_MODE == 2:
     import calendar
     calendar_app = calendar.CalendarApp()
     calendar_app.run()
+elif RUN_MODE == 3:
+    # 运行中文字体测试
+    print("启动中文字体测试")
+    import image
+    from image_light import hello_world
+    image.run(hello_world, width=400, height=300)
 else:
     # 运行原始演示
     print("运行原始演示")
