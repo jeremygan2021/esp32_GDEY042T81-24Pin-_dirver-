@@ -9,8 +9,8 @@ import epaper4in2
 import config
 from time import sleep_ms
 
-# 选择运行模式：0=原始演示，1=WiFi显示，2=日历应用，3=中文字体测试
-RUN_MODE = 3  # 修改此值以选择不同的应用
+# 选择运行模式：0=原始演示，1=WiFi显示，2=日历应用，3=中文字体测试，4=HTTP图像显示，5=网络测试，6=显示BIN文件
+RUN_MODE = 6  # 修改此值以选择不同的应用
 
 if RUN_MODE == 1:
     # 运行WiFi显示应用
@@ -29,6 +29,27 @@ elif RUN_MODE == 3:
     import image
     from image_light import hello_world
     image.run(hello_world, width=400, height=300)
+elif RUN_MODE == 4:
+    # 运行HTTP图像显示
+    print("启动HTTP图像显示")
+    import http_image_display
+    http_image_display.run()
+elif RUN_MODE == 5:
+    # 运行网络测试
+    print("启动网络诊断测试")
+    import test_network
+    test_network.run()
+elif RUN_MODE == 6:
+    # 显示BIN文件
+    print("启动BIN文件显示")
+    # 读取.bin文件
+    f = open('test-device_latest.bin', 'rb')
+    bin_data = bytearray(f.read())
+    f.close()
+    print("读取BIN文件，大小: " + str(len(bin_data)) + " 字节")
+    # 使用image模块显示，400x300是屏幕尺寸
+    import image
+    image.run(bin_data, width=400, height=300)
 else:
     # 运行原始演示
     print("运行原始演示")
@@ -88,3 +109,5 @@ else:
     e.clear_screen(double_refresh=False)
     
     print("演示完成")
+
+

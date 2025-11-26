@@ -26,6 +26,12 @@ pip install Pillow
 python3 image_converter.py image <输入图片路径> <输出文件路径> [选项]
 ```
 
+```bash
+cd "/Users/jeremygan/Desktop/
+TangledupAI/esp32_GDEY042T81-24Pin-_dirver-" && python3 tool/image_con
+verter.py image tool/test_iamge_white_bg2.png images/test_image2.py --
+width 400 --height 300
+```
 选项参数：
 - `--width`: 目标宽度（默认400）
 - `--height`: 目标高度（默认300）
@@ -53,6 +59,7 @@ python3 image_converter.py image photo.jpg photo_small.py --width 128 --height 2
 ```bash
 python3 image_converter.py text "<文本内容>" <输出文件路径> [选项]
 ```
+
 
 选项参数：
 - `--width`: 目标宽度（默认400）
