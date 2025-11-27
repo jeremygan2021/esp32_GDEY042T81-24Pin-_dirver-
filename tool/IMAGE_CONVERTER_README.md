@@ -27,9 +27,7 @@ python3 image_converter.py image <输入图片路径> <输出文件路径> [选�
 ```
 
 ```bash
-cd "/Users/jeremygan/Desktop/
-TangledupAI/esp32_GDEY042T81-24Pin-_dirver-" && python3 tool/image_con
-verter.py image tool/test_iamge_white_bg2.png images/test_image2.py --
+python image_converter.py image image.png test_image.py --
 width 400 --height 300
 ```
 选项参数：
