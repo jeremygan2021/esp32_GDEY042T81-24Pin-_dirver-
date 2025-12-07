@@ -10,6 +10,7 @@ from time import sleep_ms, localtime, mktime
 import framebuf
 import gc
 import wifi
+import button_control
 
 # 初始化墨水屏
 e = epaper4in2.EPD(config.spi, config.cs, config.dc, config.rst, config.busy)
@@ -331,6 +332,9 @@ class CalendarApp:
         """运行日历应用"""
         print("启动墨水屏日历应用")
         
+        # 初始化按钮中断
+        button_control.init_button_irq()
+        
         # 初始显示
         self.display()
         
@@ -340,8 +344,13 @@ class CalendarApp:
                 # 每分钟检查一次是否需要刷新
                 self.display()
                 
-                # 等待一分钟
-                sleep_ms(60000)
+                # 等待一分钟，期间每100ms检查一次按钮状态
+                for _ in range(600):  # 600 * 100ms = 60s
+                    # 检查按钮状态
+                    if button_control.check_button() == 1:
+                        print("检测到按钮点击，退出日历应用")
+                        return  # 退出循环
+                    sleep_ms(100)
                 
                 # 垃圾回收
                 gc.collect()
