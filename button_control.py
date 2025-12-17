@@ -43,8 +43,16 @@ def handle_buttons(current_mode):
     """处理按钮事件，返回新的模式或执行重启"""
     print("等待按钮操作...")
     
+    # 清除之前可能残留的中断标志
+    global btn_irq_flag
+    btn_irq_flag = False
+    
     # 初始化按钮中断
     init_button_irq()
+    
+    # 短暂延迟，忽略初始化瞬间可能产生的噪声
+    sleep_ms(200)
+    btn_irq_flag = False
     
     while True:
         # 检查按钮状态
