@@ -12,8 +12,8 @@ import button_control
 from time import sleep_ms
 
 
-# 选择运行模式：0=原始演示，1=WiFi显示，2=日历应用，3=中文字体测试，4=HTTP图像显示，5=网络测试，6=显示BIN文件
-RUN_MODE = 0  # 修改此值以选择不同的应用
+# 选择运行模式：0=原始演示，1=WiFi显示，2=中文字体测试，3=HTTP图像显示，4=信息看板，5=显示BIN文件，6=Todo List
+RUN_MODE = 0  # 默认启动 	Todo List
 
 # 执行当前模式的应用
 def run_current_mode(mode):
@@ -28,12 +28,14 @@ def run_current_mode(mode):
         import calendar
         calendar_app = calendar.CalendarApp()
         calendar_app.run()
+        sleep_ms(3000)
     elif mode == 2:
         # 运行中文字体测试
         print("启动中文字体测试")
         import image
         from image_data import data
         image.run(data, width=400, height=300)
+        sleep_ms(3000)
     elif mode == 3:
         # 运行HTTP图像显示
         print("启动HTTP图像显示")
@@ -75,12 +77,12 @@ if __name__ == "__main__":
     # 模式名称列表
     mode_names = [
         "原始演示",
-        "WiFi显示应用",
-        "日历应用",
+        "WiFi显示+日历",
         "中文字体测试",
         "HTTP图像显示",
         "信息看板",
-        "显示BIN文件"
+        "显示BIN文件",
+        "Todo List"
     ]
     
     # 持续监听按钮事件
@@ -99,6 +101,13 @@ if __name__ == "__main__":
         
         # 执行当前模式
         run_current_mode(current_mode)
+
+
+
+
+
+        run_current_mode(current_mode)
+
 
 
 
