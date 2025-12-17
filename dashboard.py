@@ -123,12 +123,18 @@ class DashboardApp:
             return
             
         try:
+            # 显式回收内存，减少碎片，避免 SSL/TLS 内存分配失败
+            gc.collect()
+            
             # Open-Meteo API
             # 文档: https://open-meteo.com/en/docs
-            url = f"https://api.open-meteo.com/v1/forecast?latitude={self.lat}&longitude={self.lon}&current=temperature_2m,relative_humidity_2m,weather_code,is_day&timezone=auto"
+            # 使用 http 而非 https 以节省内存和避免 SSL 握手问题
+            url = f"http://api.open-meteo.com/v1/forecast?latitude={self.lat}&longitude={self.lon}&current=temperature_2m,relative_humidity_2m,weather_code,is_day&timezone=auto"
             
             print(f"获取天气信息: {self.city} ({self.lat}, {self.lon})")
-            response = urequests.get(url, timeout=10)
+            
+            # 增加超时时间
+            response = urequests.get(url, timeout=20)
             
             if response.status_code == 200:
                 data = ujson.loads(response.text)
