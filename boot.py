@@ -41,12 +41,14 @@ def run_current_mode(mode):
         print("启动HTTP图像显示")
         import http_image_display
         http_image_display.run()
+        sleep_ms(3000)
     elif mode == 4:
         # 运行信息看板
         print("启动信息看板")
         import dashboard
         app = dashboard.DashboardApp()
         app.run()
+        sleep_ms(2000)
     elif mode == 5:
         # 显示BIN文件
         print("启动BIN文件显示")
@@ -58,6 +60,7 @@ def run_current_mode(mode):
         # 使用image模块显示，400x300是屏幕尺寸
         import image
         image.run(bin_data, width=400, height=300)
+        sleep_ms(2000)
     else:
         # 清空屏幕，显示全白
         print("清空屏幕为白色")
@@ -104,9 +107,6 @@ if __name__ == "__main__":
 
 
 
-
-
-        run_current_mode(current_mode)
 
 
 
