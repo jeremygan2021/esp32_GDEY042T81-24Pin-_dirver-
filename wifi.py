@@ -1,5 +1,7 @@
 import network
 import time
+import ntptime
+from machine import RTC
 from config import WIFI_SSID, WIFI_PASSWORD, WIFI_TIMEOUT
 
 class WiFiManager:
@@ -87,6 +89,10 @@ class WiFiManager:
                     print("WiFi连接成功")
                     print(f"IP地址: {self.wlan.ifconfig()[0]}")
                     self.connected = True
+                    
+                    # 连接成功后同步时间
+                    self.sync_time()
+                    
                     return True
                     
             except OSError as e:
@@ -112,6 +118,36 @@ class WiFiManager:
         self.connected = False
         return False
         
+    def sync_time(self):
+        """同步网络时间"""
+        print("正在同步网络时间...")
+        try:
+            # 默认NTP主机 pool.ntp.org 可能会慢，可以尝试其他服务器
+            # ntptime.host = 'cn.pool.ntp.org' 
+            ntptime.settime()
+            
+            # MicroPython的ntptime设置的是UTC时间
+            # 我们需要加上时区偏移 (例如 UTC+8)
+            # 获取当前UTC时间戳
+            t = time.time()
+            # 加上8小时的秒数 (8 * 3600 = 28800)
+            t_local = t + 28800
+            
+            # 更新RTC
+            # time.localtime(t_local) 返回 (year, month, day, hour, minute, second, weekday, yearday)
+            tm = time.localtime(t_local)
+            
+            # RTC.datetime格式: (year, month, day, weekday, hour, minute, second, subseconds)
+            # 注意: weekday在localtime中是0-6 (周一=0)，但在RTC中通常是0-6 或 1-7
+            # 这里我们简单直接设置
+            RTC().datetime((tm[0], tm[1], tm[2], tm[6], tm[3], tm[4], tm[5], 0))
+            
+            print(f"时间同步成功: {tm[0]}-{tm[1]:02d}-{tm[2]:02d} {tm[3]:02d}:{tm[4]:02d}:{tm[5]:02d}")
+            return True
+        except Exception as e:
+            print(f"时间同步失败: {e}")
+            return False
+
     def disconnect(self):
         """断开WiFi连接"""
         if self.wlan.isconnected():
