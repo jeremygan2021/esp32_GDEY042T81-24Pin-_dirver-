@@ -61,6 +61,12 @@ def run_current_mode(mode):
         import image
         image.run(bin_data, width=400, height=300)
         sleep_ms(2000)
+    elif mode == 6:
+        # 运行Todo List
+        print("启动Todo List")
+        import todo_list
+        app = todo_list.TodoApp()
+        app.run()
     else:
         # 清空屏幕，显示全白
         print("清空屏幕为白色")
