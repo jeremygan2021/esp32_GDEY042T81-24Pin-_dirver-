@@ -20,6 +20,10 @@ MODE_COUNT = 7
 def btn_irq_handler(pin):
     global btn_irq_flag
     btn_irq_flag = True
+    
+    # 点击按钮时停止正在播放的音乐
+    if system_buzzer:
+        system_buzzer.stop()
 
 # 初始化按钮中断
 def init_button_irq():

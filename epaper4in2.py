@@ -36,6 +36,10 @@ SOFTWARE.
 
 from micropython import const
 from time import sleep_ms
+try:
+    from buzzer import system_buzzer
+except ImportError:
+    system_buzzer = None
 
 # Display resolution
 EPD_WIDTH  = const(400)
@@ -258,6 +262,10 @@ class EPD:
         
         # 写入图像数据
         self.write_image(0x24, frame_buffer, True, True)
+
+        # 播放等待音效 (异步)
+        if system_buzzer:
+            system_buzzer.play_process_async()
 
         # 执行刷新
         if global_refresh:

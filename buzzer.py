@@ -386,6 +386,14 @@ SONGS = {
         "notes": [
             ('F5', 60), ('REST', 20), ('F5', 60)  # 经典的“咚咚”警告预备声
         ]
+    },
+    27: {
+        "name": "Processing / Loading",
+        "tempo": 1.5,
+        "notes": [
+            ('C5', 50), ('REST', 50), ('E5', 50), ('REST', 50), 
+            ('G5', 50), ('REST', 50), ('C6', 50), ('REST', 50)
+        ]
     }
 }
 
@@ -408,6 +416,13 @@ class Buzzer:
         # Ensure it's OFF initially
         initial_state = 1 if active_low else 0
         self.pin.value(initial_state)
+        
+        self._stop_flag = False
+
+    def stop(self):
+        """Stop current playback"""
+        self._stop_flag = True
+        self.quiet()
 
     def set_volume(self, volume):
         """Set volume percentage (0-100)"""
@@ -487,28 +502,73 @@ class Buzzer:
         """
         Beep multiple times
         """
+        self._stop_flag = False
         for i in range(times):
+            if self._stop_flag: break
             self.tone(freq, duration_ms)
             if i < times - 1:
-                time.sleep_ms(pause_ms)
+                self._sleep_interruptible(pause_ms)
     
-    def play_melody(self, melody, tempo=1.0):
+    def _sleep_interruptible(self, ms):
+        """Sleep for ms milliseconds, but wake up if stop flag is set"""
+        start = time.ticks_ms()
+        while time.ticks_diff(time.ticks_ms(), start) < ms:
+            if self._stop_flag:
+                return
+            time.sleep_ms(10)
+
+    def play_melody(self, melody, tempo=1.0, unstoppable=False):
         """
         Play a melody defined by a list of (note_name, note_duration)
+        Returns True if completed, False if interrupted.
         """
+        self._stop_flag = False
         for note_name, duration in melody:
+            if not unstoppable and self._stop_flag:
+                self.quiet()
+                return False
+                
             freq = NOTES.get(note_name, 0)
-            # Play tone
-            self.tone(freq, int(duration * tempo))
+            duration_ms = int(duration * tempo)
+            
+            if freq > 0:
+                self.tone(freq, duration_ms=None) # Start sound (non-blocking)
+            else:
+                self.quiet() # Rest
+                
+            # Wait for note duration
+            if unstoppable:
+                time.sleep_ms(duration_ms)
+            else:
+                self._sleep_interruptible(duration_ms)
+            
+            if not unstoppable and self._stop_flag:
+                self.quiet()
+                return False
+            
+            self.quiet() # Stop note
+            
             # Tiny pause between notes for articulation
-            time.sleep_ms(int(20 * tempo))
+            pause_ms = int(20 * tempo)
+            if unstoppable:
+                time.sleep_ms(pause_ms)
+            else:
+                self._sleep_interruptible(pause_ms)
+            
+        return True
 
-    def play_song(self, index):
+    def play_song(self, index, unstoppable=False):
         """Play a song by index (1-5)"""
         if index in SONGS:
             song = SONGS[index]
             print(f"Playing: {song['name']} (Vol: {self.volume}%)")
-            self.play_melody(song['notes'], song['tempo'])
+            completed = self.play_melody(song['notes'], song['tempo'], unstoppable=unstoppable)
+            
+            # If interrupted and NOT playing the Cancel sound (23), play Cancel sound
+            if not completed and index != 23:
+                print("Playback interrupted.")
+                # Play Cancel/Escape sound
+                self.play_song(23, unstoppable=True)
         else:
             print(f"Song index {index} not found. Please choose 1-{len(SONGS)}")
 
@@ -542,19 +602,19 @@ class Buzzer:
     # -------------------------------------------------------------------------
     def play_startup(self):
         """Play startup sound (Song #13: Mac 'Hello')"""
-        self.play_song(13)
+        self.play_song(13, unstoppable=True)
 
     def play_shutdown(self):
         """Play shutdown sound (Song #8: Mac Shutdown)"""
-        self.play_song(8)
+        self.play_song(8, unstoppable=True)
 
     def play_success(self):
         """Play success sound (Song #9: Success / Alert)"""
-        self.play_song(9)
+        self.play_song(9, unstoppable=True)
 
     def play_error(self):
         """Play error sound (Song #10: Error)"""
-        self.play_song(10)
+        self.play_song(10, unstoppable=True)
 
     def play_click(self):
         """Play a short click sound"""
@@ -562,11 +622,26 @@ class Buzzer:
 
     def play_wifi_connected(self):
         """Play WiFi connected sound (Song #14: Finder Success)"""
-        self.play_song(14)
+        self.play_song(14, unstoppable=True)
         
     def play_wifi_fail(self):
         """Play WiFi failure sound (Song #15: System Alert)"""
-        self.play_song(15)
+        self.play_song(15, unstoppable=True)
+
+    def play_process_async(self):
+        """Play processing sound asynchronously (Song #27)"""
+        self.play_song_async(27)
+
+    def play_song_async(self, index):
+        """Play a song in a separate thread"""
+        try:
+            import _thread
+            _thread.start_new_thread(self.play_song, (index,))
+        except ImportError:
+            print("Warning: _thread module not found, playing synchronously")
+            self.play_song(index)
+        except Exception as e:
+            print(f"Error starting thread: {e}")
 
 # -------------------------------------------------------------------------
 # Global Instance
@@ -594,8 +669,14 @@ def test_buzzer(song_index=None):
         
     print(f"=== Testing Buzzer on Pin {pin} ===")
     
-    # Initialize Buzzer (Active Low, Default Volume 10%)
-    buzzer = Buzzer(pin, active_low=True, volume=50)
+    # Initialize Buzzer
+    # Use global system_buzzer if available to ensure interrupts work
+    if system_buzzer:
+        buzzer = system_buzzer
+        print("Using global system_buzzer instance")
+    else:
+        buzzer = Buzzer(pin, active_low=True, volume=50)
+        print("Created local Buzzer instance")
     
     try:
         # Initial state check
