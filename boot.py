@@ -39,6 +39,9 @@ def run_current_mode(mode):
         import image
         from image_data import data
         image.run(data, width=400, height=300)
+        print("\n播放音乐6")
+    if system_buzzer:
+        system_buzzer.play_song(6)
         sleep_ms(3000)
     elif mode == 3:
         # 运行HTTP图像显示
