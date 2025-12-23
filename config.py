@@ -15,9 +15,12 @@ busy = Pin(42)  # BUSY pin42
 
 # 按钮引脚配置
 btn1 = Pin(46, Pin.IN, Pin.PULL_UP)  # 按钮1连接到引脚46
-btn2 = Pin(20c, Pin.IN, Pin.PULL_UP)  # 按钮2连接到引脚20
+btn2 = Pin(20, Pin.IN, Pin.PULL_UP)  # 按钮2连接到引脚20
 btn3 = Pin(12, Pin.IN, Pin.PULL_UP)  # 按钮3连接到引脚12
 btn4 = Pin(11, Pin.IN, Pin.PULL_UP)  # 按钮4连接到引脚11
+
+# 蜂鸣器引脚配置
+buzzer_pin = 14  # 蜂鸣器连接到引脚14
 
 # 屏幕尺寸
 WIDTH = 400
@@ -50,9 +53,7 @@ CONTENT_ID = "latest"
 SERVER_END_POINT = "http://" + SERVER_IP + ":" + SERVER_PORT + "/api/contents/devices/" + DEVICE_ID + "/content" + CONTENT_ID + "binary?invert=false&rotate=false&dither=true"
 API_KEY = "123tangledup-ai"
 
-# OpenWeatherMap API配置 (已弃用，改用 Open-Meteo)
-# WEATHER_API_KEY = "YOUR_API_KEY_HERE"
-# WEATHER_CITY = "Shanghai"
+
 
 # Open-Meteo 配置 (无需 API Key)
 # 默认位置: 昆明 (Latitude: 24.8801, Longitude: 102.8329)

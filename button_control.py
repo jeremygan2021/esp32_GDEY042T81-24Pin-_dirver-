@@ -1,6 +1,10 @@
 from machine import reset, Pin
 from time import sleep_ms
 import config
+try:
+    from buzzer import system_buzzer
+except ImportError:
+    system_buzzer = None
 
 # 从config模块导入按钮引脚配置
 btn_pin = config.btn1  # 按钮1连接到引脚46
@@ -32,6 +36,8 @@ def check_button():
         btn_irq_flag = False
         # 短按检测
         print("按钮被点击")
+        if system_buzzer:
+            system_buzzer.play_click()
         return 1  # 短按
     
 

@@ -10,13 +10,17 @@ import epaper4in2
 import config
 import button_control
 from time import sleep_ms
-
+from buzzer import system_buzzer
 
 # 选择运行模式：0=原始演示，1=WiFi显示，2=中文字体测试，3=HTTP图像显示，4=信息看板，5=显示BIN文件，6=Todo List
 RUN_MODE = 0  # 默认启动 	Todo List
 
 # 执行当前模式的应用
 def run_current_mode(mode):
+    # Play startup sound for the new mode
+    if system_buzzer:
+        system_buzzer.play_startup()
+
     if mode == 1:
         # 先运行WiFi显示应用，然后运行日历应用
         print("启动WiFi显示应用")
@@ -78,6 +82,10 @@ def run_current_mode(mode):
         e.clear_screen(double_refresh=False)
         
         print("演示完成")
+
+    # Play shutdown/completion sound after mode finishes
+    if system_buzzer:
+        system_buzzer.play_shutdown()
 
 # 主程序入口
 if __name__ == "__main__":

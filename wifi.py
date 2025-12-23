@@ -3,6 +3,10 @@ import time
 import ntptime
 from machine import RTC
 from config import WIFI_SSID, WIFI_PASSWORD, WIFI_TIMEOUT
+try:
+    from buzzer import system_buzzer
+except ImportError:
+    system_buzzer = None
 
 class WiFiManager:
     def __init__(self):
@@ -103,6 +107,9 @@ class WiFiManager:
                     # 连接成功后同步时间
                     self.sync_time()
                     
+                    if system_buzzer:
+                        system_buzzer.play_wifi_connected()
+
                     return True
                     
             except OSError as e:
@@ -126,6 +133,8 @@ class WiFiManager:
                     print("所有连接尝试均失败")
                     
         self.connected = False
+        if system_buzzer:
+            system_buzzer.play_wifi_fail()
         return False
         
     def sync_time(self):

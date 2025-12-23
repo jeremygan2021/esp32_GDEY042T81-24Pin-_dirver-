@@ -6,6 +6,10 @@ import config
 from time import sleep_ms
 import image
 import wifi
+try:
+    from buzzer import system_buzzer
+except ImportError:
+    system_buzzer = None
 
 def http_get(host, port, path, headers=None):
     """使用socket实现HTTP GET请求"""
@@ -93,6 +97,8 @@ def fetch_image_from_server():
         return body
     else:
         print("获取图像失败，状态码: " + str(status_code))
+        if system_buzzer:
+            system_buzzer.play_error()
         return None
 
 def run():
