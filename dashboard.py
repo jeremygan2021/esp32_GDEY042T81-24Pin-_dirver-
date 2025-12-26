@@ -12,6 +12,10 @@ import wifi
 import button_control
 import urequests
 import ujson
+try:
+    from buzzer import system_buzzer
+except ImportError:
+    system_buzzer = None
 
 # 初始化墨水屏
 e = epaper4in2.EPD(config.spi, config.cs, config.dc, config.rst, config.busy)
@@ -120,7 +124,9 @@ class DashboardApp:
         """获取天气信息"""
         if not self.wifi_connected:
             print("WiFi未连接，无法获取天气")
-            return
+            if system_buzzer:
+                system_buzzer.play_error()
+            return False
             
         try:
             # 内存回收，防止 ENOMEM
@@ -136,6 +142,7 @@ class DashboardApp:
             # 增加超时时间，避免网络慢导致的问题
             response = urequests.get(url, timeout=20)
             
+            success = False
             if response.status_code == 200:
                 data = ujson.loads(response.text)
                 
@@ -186,14 +193,24 @@ class DashboardApp:
                     self.weather_icon = CLOUDY_ICON
                 
                 print(f"天气: {self.weather_desc} (Code: {weather_code}), 温度: {self.temperature}°C, 湿度: {self.humidity}%")
+                if system_buzzer:
+                    system_buzzer.play_success()
+                success = True
             else:
                 print(f"获取天气失败: HTTP {response.status_code}")
+                if system_buzzer:
+                    system_buzzer.play_error()
+                success = False
                 
             response.close()
+            return success
             
         except Exception as e:
             print(f"获取天气异常: {e}")
             self.weather_desc = "Error"
+            if system_buzzer:
+                system_buzzer.play_error()
+            return False
     
     def draw_scaled_icon(self, icon_data, x, y, source_size=16, scale=1):
         """绘制缩放的图标"""
@@ -390,13 +407,17 @@ class DashboardApp:
             self.connect_wifi()
             
             # 获取天气信息
-            self.fetch_weather()
+            fetch_ok = self.fetch_weather()
             
             # 绘制界面
             self.draw_dashboard()
             
             # 显示到屏幕
             e.display_frame(buf, global_refresh=True)
+            
+            # 如果是首次强制刷新且获取成功，则避免下一分钟再次刷新
+            if force and fetch_ok:
+                self.last_refresh_hour = self.current_hour
         else:
             print(f"无需刷新 - {self.current_hour:02d}:{self.current_minute:02d}")
     
