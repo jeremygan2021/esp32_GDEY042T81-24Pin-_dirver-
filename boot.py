@@ -137,7 +137,7 @@ def run_current_mode(mode):
         sleep_ms(500)
         app = todo_list.TodoApp()
         app.run()
-    else:
+    elif mode == 7:
         # 清空屏幕，显示全白
         print("清空屏幕为白色")
         
@@ -162,6 +162,7 @@ def run_current_mode(mode):
 
 # 主程序入口
 if __name__ == "__main__":
+    print("开机音乐")
     system_buzzer.play_song(7)
     current_mode = RUN_MODE
     
@@ -197,7 +198,15 @@ if __name__ == "__main__":
                 try:
                     if system_buzzer:
                         system_buzzer.play_song(28, unstoppable=True)
-                        sleep_ms(2500)
+                        sleep_ms(1000)
+                        print("清空屏幕为白色")
+                        e = epaper4in2.EPD(config.spi, config.cs, config.dc, config.rst, config.busy)
+                        
+                        e.pwr_on()
+                        e.init()
+                        e.clear_screen(double_refresh=False)
+                        
+                        print("演示完成")
                 except:
                     pass
                 print("即将重启以释放内存")
