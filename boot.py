@@ -67,6 +67,7 @@ def run_current_mode(mode):
     elif mode == 2:
         # 运行中文字体测试
         print("启动中文字体测试")
+        sleep_ms(500)
         import image
         from image_data import data
         image.run(data, width=400, height=300)
@@ -77,6 +78,7 @@ def run_current_mode(mode):
     elif mode == 3:
         # 运行HTTP图像显示
         print("启动HTTP图像显示")
+        sleep_ms(500)
         import http_image_display
         http_image_display.run()
         sleep_ms(1500)
@@ -87,12 +89,14 @@ def run_current_mode(mode):
         # 运行信息看板
         print("启动信息看板")
         import dashboard
+        sleep_ms(500)
         app = dashboard.DashboardApp()
         app.run()
         sleep_ms(2000)
     elif mode == 5:
         # 显示BIN文件
         print("启动BIN文件显示")
+        sleep_ms(500)
         # 读取.bin文件
         import os
         try:
@@ -130,6 +134,7 @@ def run_current_mode(mode):
         # 运行Todo List
         print("启动Todo List")
         import todo_list
+        sleep_ms(500)
         app = todo_list.TodoApp()
         app.run()
     else:
@@ -157,6 +162,7 @@ def run_current_mode(mode):
 
 # 主程序入口
 if __name__ == "__main__":
+    system_buzzer.play_song(7)
     current_mode = RUN_MODE
     
     # 模式名称列表
@@ -205,6 +211,7 @@ if __name__ == "__main__":
         
         # 执行当前模式
         run_current_mode(current_mode)
+
 
 
 
