@@ -17,6 +17,7 @@ import gc
 RUN_MODE = 0  # 默认启动 	Todo List
 
 import sys
+import machine
 
 # 清理缓存函数
 def clear_cache():
@@ -186,12 +187,23 @@ if __name__ == "__main__":
             # 如果切换回模式0，执行深度清理
             if current_mode == 0:
                 clear_cache()
+                # 播放专属的 Macintosh 关机音频
+                try:
+                    if system_buzzer:
+                        system_buzzer.play_song(28, unstoppable=True)
+                except:
+                    pass
+                print("即将重启以释放内存")
+                # 关闭墨水屏电源（如有）
+                try:
+                    config.epd_power.off()
+                except:
+                    pass
+                sleep_ms(500)
+                machine.reset()
         
         # 执行当前模式
         run_current_mode(current_mode)
-
-
-
 
 
 

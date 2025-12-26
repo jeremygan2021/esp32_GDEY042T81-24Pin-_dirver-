@@ -155,6 +155,17 @@ SONGS = {
             ('C5', 50), ('REST', 50), ('E5', 50), ('REST', 50), 
             ('G5', 50), ('REST', 50), ('C6', 50), ('REST', 50)
         ]
+    },
+    28: {
+        "name": "Mac Shutdown (Unique Warm Down)",
+        "tempo": 1.0,
+        "notes": [
+            ('C5', 120), ('E5', 120), ('G5', 180),
+            ('REST', 100),
+            ('G5', 120), ('E5', 120), ('C5', 200),
+            ('REST', 80),
+            ('G4', 180), ('C4', 600)
+        ]
     }
 }
 
@@ -179,6 +190,12 @@ class Buzzer:
         self.pin.value(initial_state)
         
         self._stop_flag = False
+        # Simple concurrency lock to protect PWM from concurrent access
+        try:
+            import _thread
+            self._lock = _thread.allocate_lock()
+        except Exception:
+            self._lock = None
 
     def stop(self):
         """Stop current playback"""
@@ -219,30 +236,58 @@ class Buzzer:
                 time.sleep_ms(duration_ms)
             return
 
-        self._ensure_pwm()
-        self.pwm.freq(freq)
-        
-        # Calculate duty cycle from volume if not specified
-        if duty is None:
-            # Volume 0-100 maps to Duty 0-512 (50% duty is max volume for square wave)
-            target_duty = int((self.volume / 100) * 512)
-            self.pwm.duty(target_duty)
-        else:
-            self.pwm.duty(duty)
-        
-        if duration_ms:
-            time.sleep_ms(duration_ms)
-            self.quiet()
+        # Protect against concurrent access
+        if self._lock:
+            self._lock.acquire()
+        try:
+            self._ensure_pwm()
+            # If PWM init failed due to low-level error, try to recover
+            if self.pwm is None:
+                self._ensure_pwm()
+            self.pwm.freq(freq)
+            
+            # Calculate duty cycle from volume if not specified
+            if duty is None:
+                # Volume 0-100 maps to Duty 0-512 (50% duty is max volume for square wave)
+                target_duty = int((self.volume / 100) * 512)
+                # Re-check in case another thread deinit'ed PWM
+                if self.pwm is None:
+                    self._ensure_pwm()
+                self.pwm.duty(target_duty)
+            else:
+                if self.pwm is None:
+                    self._ensure_pwm()
+                self.pwm.duty(duty)
+            
+            if duration_ms:
+                time.sleep_ms(duration_ms)
+                self.quiet()
+        finally:
+            if self._lock:
+                self._lock.release()
 
     def quiet(self):
         """Stop the sound (Mute)"""
-        if self.pwm is not None:
-            self.pwm.duty(0)
-            self.pwm.deinit()
-            self.pwm = None
-        
-        # Turn OFF via GPIO
-        self.off()
+        # Protect against concurrent access
+        if self._lock:
+            self._lock.acquire()
+        try:
+            if self.pwm is not None:
+                try:
+                    self.pwm.duty(0)
+                except Exception:
+                    pass
+                try:
+                    self.pwm.deinit()
+                except Exception:
+                    pass
+                self.pwm = None
+            
+            # Turn OFF via GPIO
+            self.off()
+        finally:
+            if self._lock:
+                self._lock.release()
 
     def on(self):
         """Turn ON (Constant Sound)"""
