@@ -191,6 +191,7 @@ if __name__ == "__main__":
                 try:
                     if system_buzzer:
                         system_buzzer.play_song(28, unstoppable=True)
+                        sleep_ms(2500)
                 except:
                     pass
                 print("即将重启以释放内存")
