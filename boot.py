@@ -194,19 +194,20 @@ if __name__ == "__main__":
             # 如果切换回模式0，执行深度清理
             if current_mode == 0:
                 clear_cache()
+                print("清空屏幕为白色")
+                e = epaper4in2.EPD(config.spi, config.cs, config.dc, config.rst, config.busy)
+                
+                e.pwr_on()
+                e.init()
+                e.clear_screen(double_refresh=False)
+                
+                print("关机")
                 # 播放专属的 Macintosh 关机音频
                 try:
                     if system_buzzer:
                         system_buzzer.play_song(28, unstoppable=True)
                         sleep_ms(1000)
-                        print("清空屏幕为白色")
-                        e = epaper4in2.EPD(config.spi, config.cs, config.dc, config.rst, config.busy)
-                        
-                        e.pwr_on()
-                        e.init()
-                        e.clear_screen(double_refresh=False)
-                        
-                        print("演示完成")
+
                 except:
                     pass
                 print("即将重启以释放内存")

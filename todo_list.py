@@ -12,6 +12,10 @@ import wifi
 import button_control
 import urequests
 import ujson
+try:
+    from buzzer import system_buzzer
+except ImportError:
+    system_buzzer = None
 
 # 初始化墨水屏
 e = epaper4in2.EPD(config.spi, config.cs, config.dc, config.rst, config.busy)
@@ -44,6 +48,7 @@ class TodoApp:
         self.wifi_connected = False
         self.last_refresh_time = 0
         self.refresh_interval = 300000  # 5分钟刷新一次
+        self.first_success_done = False
         
     def connect_wifi(self):
         """连接WiFi"""
@@ -56,7 +61,9 @@ class TodoApp:
     def fetch_todos(self):
         """获取Todo列表"""
         if not self.wifi_connected:
-            return
+            if system_buzzer:
+                system_buzzer.play_error()
+            return False
 
         try:
             url = "http://6.6.6.86:8199/api/todos/?skip=0&limit=100&device_id=1"
@@ -68,6 +75,7 @@ class TodoApp:
             print("正在获取Todo列表...")
             response = urequests.get(url, headers=headers)
             
+            success = False
             if response.status_code == 200:
                 self.todos = ujson.loads(response.text)
                 # 排序：未完成的在前，已完成的在后；同类中按截止日期排序
@@ -80,13 +88,23 @@ class TodoApp:
                 # 只保留前8条 (为了美观，减少数量)
                 self.todos = self.todos[:8]
                 print(f"成功获取 {len(self.todos)} 条Todo")
+                if system_buzzer:
+                    system_buzzer.play_success()
+                success = True
             else:
                 print(f"获取Todo失败: HTTP {response.status_code}")
+                if system_buzzer:
+                    system_buzzer.play_error()
+                success = False
                 
             response.close()
+            return success
             
         except Exception as err:
             print(f"获取Todo异常: {err}")
+            if system_buzzer:
+                system_buzzer.play_error()
+            return False
 
     def parse_date_str(self, date_str):
         try:
@@ -267,9 +285,11 @@ class TodoApp:
         print("启动 Todo List 应用 (Premium UI)")
         button_control.init_button_irq()
         self.connect_wifi()
-        self.fetch_todos()
+        ok = self.fetch_todos()
         self.draw_ui()
         e.display_frame(buf, global_refresh=True)
+        if ok:
+            self.first_success_done = True
         
         while True:
             try:
@@ -277,10 +297,12 @@ class TodoApp:
                     print("退出")
                     return
                 if not self.wifi_connected:
-                     if self.connect_wifi():
-                         self.fetch_todos()
+                     if self.connect_wifi() and not self.first_success_done:
+                         ok2 = self.fetch_todos()
                          self.draw_ui()
                          e.display_frame(buf, global_refresh=True)
+                         if ok2:
+                             self.first_success_done = True
                 sleep_ms(100)
             except Exception as err:
                 print(f"Error: {err}")
