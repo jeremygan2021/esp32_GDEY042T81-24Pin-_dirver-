@@ -123,12 +123,18 @@ class DashboardApp:
             return
             
         try:
+            # 内存回收，防止 ENOMEM
+            gc.collect()
+            print(f"内存剩余: {gc.mem_free()} bytes")
+            
             # Open-Meteo API
+            # 使用 HTTP 而非 HTTPS 以节省内存 (SSL 需要大量 RAM)
             # 文档: https://open-meteo.com/en/docs
-            url = f"https://api.open-meteo.com/v1/forecast?latitude={self.lat}&longitude={self.lon}&current=temperature_2m,relative_humidity_2m,weather_code,is_day&timezone=auto"
+            url = f"http://api.open-meteo.com/v1/forecast?latitude={self.lat}&longitude={self.lon}&current=temperature_2m,relative_humidity_2m,weather_code,is_day&timezone=auto"
             
             print(f"获取天气信息: {self.city} ({self.lat}, {self.lon})")
-            response = urequests.get(url, timeout=10)
+            # 增加超时时间，避免网络慢导致的问题
+            response = urequests.get(url, timeout=20)
             
             if response.status_code == 200:
                 data = ujson.loads(response.text)
@@ -191,29 +197,41 @@ class DashboardApp:
     
     def draw_scaled_icon(self, icon_data, x, y, source_size=16, scale=1):
         """绘制缩放的图标"""
-        # 创建源图标缓冲区
-        icon_buf = bytearray(source_size * source_size // 8)
-        icon_fb = framebuf.FrameBuffer(icon_buf, source_size, source_size, framebuf.MONO_HMSB)
+        # 直接读取数据，避开 framebuf 可能存在的字节序问题
+        bytes_per_row = source_size // 8
         
-        # 填充源数据
-        for i in range(len(icon_data)):
-            icon_buf[i] = icon_data[i]
-            
-        # 逐像素放大绘制
         for sy in range(source_size):
             for sx in range(source_size):
-                if icon_fb.pixel(sx, sy):
-                    fb.fill_rect(x + sx * scale, y + sy * scale, scale, scale, BLACK)
+                # 计算字节索引: 行号 * 每行字节数 + 列号 // 8
+                byte_index = sy * bytes_per_row + (sx // 8)
+                
+                # 确保索引不越界
+                if byte_index < len(icon_data):
+                    # 计算位索引: 7 - (列号 % 8) (MSB first)
+                    bit_index = 7 - (sx % 8)
+                    
+                    # 获取像素值
+                    if (icon_data[byte_index] >> bit_index) & 1:
+                        fb.fill_rect(x + sx * scale, y + sy * scale, scale, scale, BLACK)
 
     def draw_icon(self, icon_data, x, y, size=16):
         """绘制图标"""
-        icon_buf = bytearray(size * size // 8)
-        icon_fb = framebuf.FrameBuffer(icon_buf, size, size, framebuf.MONO_HMSB)
+        # 直接读取数据，避开 framebuf 可能存在的字节序问题
+        bytes_per_row = size // 8
         
-        for i in range(len(icon_data)):
-            icon_buf[i] = icon_data[i]
-            
-        fb.blit(icon_fb, x, y)
+        for sy in range(size):
+            for sx in range(size):
+                # 计算字节索引: 行号 * 每行字节数 + 列号 // 8
+                byte_index = sy * bytes_per_row + (sx // 8)
+                
+                # 确保索引不越界
+                if byte_index < len(icon_data):
+                    # 计算位索引: 7 - (列号 % 8) (MSB first)
+                    bit_index = 7 - (sx % 8)
+                    
+                    # 获取像素值
+                    if (icon_data[byte_index] >> bit_index) & 1:
+                        fb.pixel(x + sx, y + sy, BLACK)
 
     def draw_scaled_text(self, text, x, y, scale=1):
         """使用像素放大绘制文本"""

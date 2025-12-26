@@ -121,10 +121,8 @@ def run():
     # 使用image模块显示
     print("\n=== 显示图像 ===")
     image.run(bin_data, width=400, height=300)
-    print("\n播放音乐1")
-    if system_buzzer:
-        system_buzzer.play_song(1)
-    
+
+
     print("\n程序完成")
 
 if __name__ == "__main__":

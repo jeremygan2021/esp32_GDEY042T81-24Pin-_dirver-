@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 墨水屏蓝牙配置</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f7;
+            color: #333;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        h1 {
+            text-align: center;
+            color: #007aff;
+            margin-bottom: 20px;
+        }
+        .status {
+            text-align: center;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            background-color: #e5e5ea;
+            font-weight: bold;
+        }
+        .status.connected {
+            background-color: #34c759;
+            color: white;
+        }
+        .section {
+            margin-bottom: 25px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 20px;
+        }
+        .section:last-child {
+            border-bottom: none;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #d1d1d6;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #007aff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:disabled {
+            background-color: #a1a1a6;
+            cursor: not-allowed;
+        }
+        button:active {
+            background-color: #0056b3;
+        }
+        #log {
+            background-color: #1c1c1e;
+            color: #34c759;
+            padding: 10px;
+            border-radius: 8px;
+            height: 150px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ESP32 墨水屏配置</h1>
+        
+        <div id="connectionStatus" class="status">未连接</div>
+        
+        <div style="display: flex; gap: 10px;">
+            <button id="connectBtn">🔌 连接蓝牙设备</button>
+            <button id="disconnectBtn" style="display:none; background-color: #ff3b30;">❌ 断开连接</button>
+        </div>
+        
+        <div id="controls" style="display:none; margin-top: 20px;">
+            <div class="section">
+                <h3>WiFi 配置</h3>
+                <label for="ssid">WiFi 名称 (SSID)</label>
+                <input type="text" id="ssid" placeholder="输入 WiFi 名称">
+                
+                <label for="password">WiFi 密码</label>
+                <input type="password" id="password" placeholder="输入 WiFi 密码">
+                
+                <button id="sendWifiBtn">发送 WiFi 配置</button>
+            </div>
+            
+            <div class="section">
+                <h3>发送 JSON 数据</h3>
+                <label for="jsonData">JSON 内容</label>
+                <textarea id="jsonData" rows="5" placeholder='{"key": "value"}'></textarea>
+                
+                <button id="sendJsonBtn">发送 JSON</button>
+            </div>
+        </div>
+        
+        <div id="log"></div>
+    </div>
+
+    <script>
+        // UUIDs from bluetooth.py
+        const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+        const CHARACTERISTIC_RX_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"; // Write to ESP32
+        const CHARACTERISTIC_TX_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"; // Notify from ESP32
+
+        let bluetoothDevice;
+        let rxCharacteristic;
+        let txCharacteristic;
+
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const statusDiv = document.getElementById('connectionStatus');
+        const controlsDiv = document.getElementById('controls');
+        const logDiv = document.getElementById('log');
+
+        function log(message) {
+            const now = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${now}] ${message}<br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        connectBtn.addEventListener('click', async () => {
+            try {
+                log('正在请求蓝牙设备...');
+                bluetoothDevice = await navigator.bluetooth.requestDevice({
+                    filters: [{ namePrefix: 'ESP32' }],
+                    optionalServices: [SERVICE_UUID]
+                });
+
+                bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+                log('正在连接 GATT 服务器...');
+                const server = await bluetoothDevice.gatt.connect();
+
+                log('正在获取服务...');
+                const service = await server.getPrimaryService(SERVICE_UUID);
+
+                log('正在获取特征值...');
+                rxCharacteristic = await service.getCharacteristic(CHARACTERISTIC_RX_UUID);
+                txCharacteristic = await service.getCharacteristic(CHARACTERISTIC_TX_UUID);
+
+                await txCharacteristic.startNotifications();
+                txCharacteristic.addEventListener('characteristicvaluechanged', handleNotifications);
+
+                updateUIConnected();
+                log('蓝牙连接成功！');
+
+            } catch (error) {
+                log('连接失败: ' + error);
+            }
+        });
+
+        disconnectBtn.addEventListener('click', () => {
+            if (bluetoothDevice && bluetoothDevice.gatt.connected) {
+                log('正在断开连接...');
+                bluetoothDevice.gatt.disconnect();
+            } else {
+                log('设备未连接');
+            }
+        });
+
+        function updateUIConnected() {
+            statusDiv.textContent = '✅ 已连接: ' + bluetoothDevice.name;
+            statusDiv.classList.add('connected');
+            connectBtn.style.display = 'none';
+            disconnectBtn.style.display = 'block';
+            controlsDiv.style.display = 'block';
+        }
+
+        function onDisconnected(event) {
+            const device = event.target;
+            statusDiv.textContent = '❌ 已断开';
+            statusDiv.classList.remove('connected');
+            connectBtn.style.display = 'block';
+            disconnectBtn.style.display = 'none';
+            controlsDiv.style.display = 'none';
+            log(`设备 ${device.name} 已断开连接`);
+        }
+
+        // 尝试在页面关闭时断开连接
+        window.addEventListener('beforeunload', () => {
+            if (bluetoothDevice && bluetoothDevice.gatt.connected) {
+                bluetoothDevice.gatt.disconnect();
+            }
+        });
+
+        function handleNotifications(event) {
+            const value = event.target.value;
+            const decoder = new TextDecoder('utf-8');
+            log('收到消息: ' + decoder.decode(value));
+        }
+
+        document.getElementById('sendWifiBtn').addEventListener('click', async () => {
+            const ssid = document.getElementById('ssid').value;
+            const password = document.getElementById('password').value;
+
+            if (!ssid) {
+                alert('请输入 WiFi 名称');
+                return;
+            }
+
+            const data = {
+                ssid: ssid,
+                password: password
+            };
+
+            await sendData(JSON.stringify(data));
+        });
+
+        document.getElementById('sendJsonBtn').addEventListener('click', async () => {
+            const jsonStr = document.getElementById('jsonData').value;
+            try {
+                // Validate JSON
+                JSON.parse(jsonStr);
+                await sendData(jsonStr);
+            } catch (e) {
+                alert('无效的 JSON 格式');
+            }
+        });
+
+        async function sendData(str) {
+            if (!rxCharacteristic) {
+                alert('蓝牙未连接');
+                return;
+            }
+
+            try {
+                const encoder = new TextEncoder();
+                const value = encoder.encode(str);
+                await rxCharacteristic.writeValue(value);
+                log('已发送数据: ' + str);
+            } catch (error) {
+                log('发送失败: ' + error);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -630,16 +630,16 @@ class Buzzer:
 
     def play_process_async(self):
         """Play processing sound asynchronously (Song #27)"""
-        self.play_song_async(27)
+        self.play_song_async(27, unstoppable=True)
 
-    def play_song_async(self, index):
+    def play_song_async(self, index, unstoppable=False):
         """Play a song in a separate thread"""
         try:
             import _thread
-            _thread.start_new_thread(self.play_song, (index,))
+            _thread.start_new_thread(self.play_song, (index, unstoppable))
         except ImportError:
             print("Warning: _thread module not found, playing synchronously")
-            self.play_song(index)
+            self.play_song(index, unstoppable=unstoppable)
         except Exception as e:
             print(f"Error starting thread: {e}")
 

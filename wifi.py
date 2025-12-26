@@ -1,6 +1,7 @@
 import network
 import time
 import ntptime
+import json
 from machine import RTC
 from config import WIFI_SSID, WIFI_PASSWORD, WIFI_TIMEOUT
 try:
@@ -28,22 +29,40 @@ class WiFiManager:
                 print(f"WiFi重新初始化失败: {e2}")
                 raise
         
+    def _load_stored_config(self):
+        """尝试从文件加载WiFi配置"""
+        try:
+            with open('wifi_config.json', 'r') as f:
+                config = json.load(f)
+                return config.get('ssid'), config.get('password')
+        except:
+            return None, None
+
     def connect(self, ssid=None, password=None, timeout=None):
         """连接到WiFi网络
         
         参数:
-            ssid: WiFi名称，如果为None则使用config.py中的配置
-            password: WiFi密码，如果为None则使用config.py中的配置
+            ssid: WiFi名称，如果为None则尝试从wifi_config.json或config.py获取
+            password: WiFi密码，如果为None则尝试从wifi_config.json或config.py获取
             timeout: 连接超时时间(毫秒)，如果为None则使用config.py中的配置
             
         返回:
             bool: 连接是否成功
         """
+        # 1. 如果未提供参数，尝试从文件加载
+        if not ssid or not password:
+            stored_ssid, stored_pass = self._load_stored_config()
+            if stored_ssid and stored_pass:
+                ssid = ssid or stored_ssid
+                password = password or stored_pass
+
+        # 2. 如果仍未获取到，使用config.py中的默认配置
         ssid = ssid or WIFI_SSID
         password = password or WIFI_PASSWORD
         timeout = timeout or WIFI_TIMEOUT
         
         if not ssid or not password:
+
             print("错误: WiFi SSID或密码未设置")
             return False
             

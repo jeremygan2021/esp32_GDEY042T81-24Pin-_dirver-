@@ -20,6 +20,9 @@ def run_current_mode(mode):
     # Play startup sound for the new mode
     if system_buzzer:
         system_buzzer.play_startup()
+        # 增加延迟并清除可能因声音干扰产生的按钮中断
+        sleep_ms(500)
+        button_control.btn_irq_flag = False
 
     if mode == 1:
         # 先运行WiFi显示应用，然后运行日历应用
@@ -39,9 +42,9 @@ def run_current_mode(mode):
         import image
         from image_data import data
         image.run(data, width=400, height=300)
+        sleep_ms(1500)
         print("\n播放音乐6")
-    if system_buzzer:
-        system_buzzer.play_song(6)
+        system_buzzer.play_song(config.PLAY_SONG_INDEX)
         sleep_ms(3000)
     elif mode == 3:
         # 运行HTTP图像显示
@@ -89,6 +92,9 @@ def run_current_mode(mode):
     # Play shutdown/completion sound after mode finishes
     if system_buzzer:
         system_buzzer.play_shutdown()
+        # 增加延迟并清除可能因声音干扰产生的按钮中断
+        sleep_ms(500)
+        button_control.btn_irq_flag = False
 
 # 主程序入口
 if __name__ == "__main__":

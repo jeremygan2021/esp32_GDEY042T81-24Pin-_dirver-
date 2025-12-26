@@ -53,7 +53,7 @@ CONTENT_ID = "latest"
 SERVER_END_POINT = "http://" + SERVER_IP + ":" + SERVER_PORT + "/api/contents/devices/" + DEVICE_ID + "/content" + CONTENT_ID + "binary?invert=false&rotate=false&dither=true"
 API_KEY = "123tangledup-ai"
 
-
+PLAY_SONG_INDEX = 1
 
 # Open-Meteo 配置 (无需 API Key)
 # 默认位置: 昆明 (Latitude: 24.8801, Longitude: 102.8329)

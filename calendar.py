@@ -335,6 +335,10 @@ class CalendarApp:
         # 初始化按钮中断
         button_control.init_button_irq()
         
+        # 增加延迟并清除可能因声音干扰产生的按钮中断
+        sleep_ms(500)
+        button_control.btn_irq_flag = False
+        
         # 初始显示
         self.display()
         
